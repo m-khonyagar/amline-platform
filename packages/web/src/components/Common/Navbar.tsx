@@ -12,7 +12,12 @@ export function Navbar() {
       }}
     >
       <strong>Amline Platform</strong>
-      <span style={{ color: '#475569' }}>API-connected local demo</span>
+      <div style={{ display: 'flex', gap: '1rem', color: '#475569', fontSize: '0.95rem' }}>
+        <span>خانه</span>
+        <span>پنل ادمین</span>
+        <span>حساب کاربری</span>
+        <span>مشاور</span>
+      </div>
     </nav>
   );
 }

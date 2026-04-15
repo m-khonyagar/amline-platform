@@ -14,6 +14,7 @@ export function PropertyCard({ property }: { property: PropertySummary }) {
     >
       <div style={{ fontSize: '0.85rem', color: '#0f766e', marginBottom: '0.35rem' }}>{property.city}</div>
       <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{property.title}</h3>
+      <p style={{ marginTop: '0.5rem', marginBottom: '0.35rem', color: '#64748b' }}>وضعیت: {property.status}</p>
       <p style={{ marginBottom: 0, color: '#334155' }}>{formatPrice(property.price)} ریال</p>
     </article>
   );

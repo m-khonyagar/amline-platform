@@ -139,6 +139,23 @@ export async function requestListener(
       return;
     }
 
+    if (method === 'GET' && url.pathname === '/api/billing/invoices') {
+      sendJson(response, 200, { items: app.billingRoutes.list() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/account/profile') {
+      sendJson(response, 200, {
+        id: 'acct_1',
+        fullName: 'آراد صالحی',
+        role: 'seller',
+        mobile: '09121234567',
+        city: 'تهران',
+        membership: 'Amline Plus',
+      });
+      return;
+    }
+
     if (method === 'GET' && url.pathname === '/api/ai/estimate') {
       const city = url.searchParams.get('city') ?? 'تهران';
       const area = Number(url.searchParams.get('area') ?? '100');

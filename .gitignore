@@ -20,3 +20,5 @@ package-lock.json
 backend/backend/data/
 **/test-results/
 **/playwright-report/
+dev-stack.out.log
+dev-stack.err.log
