@@ -1,7 +1,8 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
 import { propertyService } from '../src/services/propertyService';
 
-describe('propertyService', () => {
-  it('returns seeded properties', () => {
-    expect(propertyService.list().length).toBeGreaterThan(0);
-  });
+test('propertyService returns seeded properties', () => {
+  assert.ok(propertyService.list().length > 0);
 });
