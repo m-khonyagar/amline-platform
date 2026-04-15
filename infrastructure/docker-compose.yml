@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  api:
+    build: ../packages/api
+    ports:
+      - "8080:8080"
+  web:
+    build: ../packages/web
+    ports:
+      - "3000:3000"
+  ai:
+    build: ../packages/ai
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: amline
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

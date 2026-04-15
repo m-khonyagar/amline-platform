@@ -1,0 +1,25 @@
+{
+  "name": "amline-platform",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Professional platform for buying, selling, and renting properties in Iran.",
+  "license": "MIT",
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "packages/api",
+    "packages/web",
+    "packages/sdk",
+    "packages/integrations"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @amline/api & npm run dev -w @amline/web",
+    "build": "npm run build -ws --if-present",
+    "lint": "npm run lint -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "format": "npm run format -ws --if-present",
+    "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup.ps1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

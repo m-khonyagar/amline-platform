@@ -1,0 +1,12 @@
+{
+  "name": "@amline/sdk",
+  "version": "1.0.0",
+  "private": false,
+  "main": "dist/amlineSDK.js",
+  "types": "dist/amlineSDK.d.ts",
+  "scripts": {
+    "build": "echo sdk build placeholder",
+    "lint": "echo sdk lint placeholder",
+    "test": "echo sdk test placeholder"
+  }
+}

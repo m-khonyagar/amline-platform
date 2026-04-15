@@ -1,0 +1,10 @@
+{
+  "name": "@amline/integrations",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo integrations build placeholder",
+    "lint": "echo integrations lint placeholder",
+    "test": "echo integrations test placeholder"
+  }
+}

@@ -1,0 +1,13 @@
+:root {
+  --amline-primary: #0f766e;
+  --amline-accent: #f59e0b;
+  --amline-surface: #f7f7f5;
+  --amline-text: #0f172a;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #ecfeff 100%);
+  color: var(--amline-text);
+  font-family: "Tahoma", sans-serif;
+}

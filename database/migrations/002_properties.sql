@@ -1,0 +1,1 @@
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'draft';

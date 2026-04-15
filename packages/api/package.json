@@ -1,0 +1,13 @@
+{
+  "name": "@amline/api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "node src/server.ts",
+    "build": "echo api build placeholder",
+    "lint": "echo api lint placeholder",
+    "test": "echo api test placeholder"
+  }
+}
