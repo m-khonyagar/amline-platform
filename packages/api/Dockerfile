@@ -1,5 +1,8 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package.json .
+COPY package.json tsconfig.json ./
 COPY src ./src
-CMD ["node", "src/server.ts"]
+RUN npm install
+RUN npm run build
+EXPOSE 8080
+CMD ["npm", "run", "start"]

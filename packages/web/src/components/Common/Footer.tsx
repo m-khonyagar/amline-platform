@@ -1,3 +1,7 @@
 export function Footer() {
-  return <footer>Amline Platform © 2026</footer>;
+  return (
+    <footer style={{ padding: '1.25rem', textAlign: 'center', color: '#475569' }}>
+      Amline Platform © 2026
+    </footer>
+  );
 }
