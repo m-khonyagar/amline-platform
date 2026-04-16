@@ -1,32 +1,104 @@
-# اجرای بک‌اند روی لوکال با Postgres/Redis/MinIO که از docker-compose روی پورت‌های پیش‌فرض بالا آمده‌اند.
-# ۱) یک بار: .\scripts\docker-deps-up.ps1   (یا docker compose up -d postgres redis minio && ...)
-# ۲) pip install -r backend/backend/requirements.txt  (+ psycopg2-binary اگر لازم شد)
-# Admin UI (Vite): از ریشه: npm run dev:admin  → http://localhost:3002  (پروکسی به API روی 8080)
+param(
+  [switch]$OpenBrowser
+)
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
-Set-Location "$root\backend\backend"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$runtimeLogs = Join-Path $repoRoot ".runtime-logs"
+$runtimePids = Join-Path $repoRoot ".runtime-pids"
 
-if (-not $env:DATABASE_URL) {
-  $env:DATABASE_URL = "postgresql+psycopg2://amline:amline_secret@127.0.0.1:5432/amline"
+function Ensure-Directory([string]$Path) {
+  if (-not (Test-Path $Path)) {
+    New-Item -ItemType Directory -Path $Path | Out-Null
+  }
 }
-if (-not $env:AMLINE_REDIS_URL) {
-  $env:AMLINE_REDIS_URL = "redis://:amline_redis_secret@127.0.0.1:6379/0"
-}
-if (-not $env:AMLINE_JWT_SECRET) {
-  $env:AMLINE_JWT_SECRET = "local-dev-jwt-secret-minimum-32-characters!!"
-}
-if (-not $env:AMLINE_S3_ENDPOINT_URL) {
-  $env:AMLINE_S3_ENDPOINT_URL = "http://127.0.0.1:9000"
-}
-if (-not $env:AMLINE_S3_ACCESS_KEY) { $env:AMLINE_S3_ACCESS_KEY = "amline" }
-if (-not $env:AMLINE_S3_SECRET_KEY) { $env:AMLINE_S3_SECRET_KEY = "amline_minio_secret" }
-if (-not $env:AMLINE_S3_BUCKET) { $env:AMLINE_S3_BUCKET = "amline-docs" }
 
-$env:AMLINE_OTP_DEBUG = "1"
-$env:AMLINE_RBAC_ENFORCE = "0"
-$env:AMLINE_OTP_MAGIC_ENABLED = "1"
+function Stop-PortProcesses([int[]]$Ports) {
+  $processIds = Get-NetTCPConnection -ErrorAction SilentlyContinue |
+    Where-Object { $_.LocalPort -in $Ports } |
+    Select-Object -ExpandProperty OwningProcess -Unique
 
-Write-Host "DATABASE_URL=$($env:DATABASE_URL)"
-Write-Host "AMLINE_REDIS_URL=$($env:AMLINE_REDIS_URL)"
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
+  foreach ($processId in $processIds) {
+    try {
+      Stop-Process -Id $processId -Force -ErrorAction Stop
+    } catch {
+    }
+  }
+}
+
+function Wait-HttpOk([string]$Url, [int]$TimeoutSeconds = 40) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+
+  while ((Get-Date) -lt $deadline) {
+    try {
+      $response = Invoke-WebRequest -UseBasicParsing $Url -TimeoutSec 5
+      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) {
+        return $true
+      }
+    } catch {
+    }
+
+    Start-Sleep -Seconds 1
+  }
+
+  return $false
+}
+
+Ensure-Directory $runtimeLogs
+Ensure-Directory $runtimePids
+
+Stop-PortProcesses @(3000, 8080)
+
+Set-Location $repoRoot
+
+Write-Host "Building API and Web for a clean local runtime..." -ForegroundColor Cyan
+npm run build -w @amline/api
+if ($LASTEXITCODE -ne 0) { throw "API build failed." }
+npm run build -w @amline/web
+if ($LASTEXITCODE -ne 0) { throw "Web build failed." }
+
+$apiLog = Join-Path $runtimeLogs "api.log"
+$apiErr = Join-Path $runtimeLogs "api.err.log"
+$webLog = Join-Path $runtimeLogs "web.log"
+$webErr = Join-Path $runtimeLogs "web.err.log"
+$apiPidFile = Join-Path $runtimePids "api.pid"
+$webPidFile = Join-Path $runtimePids "web.pid"
+
+Remove-Item $apiLog, $apiErr, $webLog, $webErr, $apiPidFile, $webPidFile -Force -ErrorAction SilentlyContinue
+
+$apiProcess = Start-Process -FilePath "cmd.exe" `
+  -ArgumentList "/c node dist/src/server.js >> `"$apiLog`" 2>> `"$apiErr`"" `
+  -WorkingDirectory (Join-Path $repoRoot "packages\api") `
+  -PassThru
+
+$webProcess = Start-Process -FilePath "cmd.exe" `
+  -ArgumentList "/c npm run start -- --hostname 127.0.0.1 --port 3000 >> `"$webLog`" 2>> `"$webErr`"" `
+  -WorkingDirectory (Join-Path $repoRoot "packages\web") `
+  -PassThru
+
+$apiProcess.Id | Set-Content -Path $apiPidFile
+$webProcess.Id | Set-Content -Path $webPidFile
+
+Write-Host "Waiting for API on http://127.0.0.1:8080/api/health ..." -ForegroundColor Yellow
+if (-not (Wait-HttpOk "http://127.0.0.1:8080/api/health")) {
+  throw "API did not become ready. Check $apiLog and $apiErr"
+}
+
+Write-Host "Waiting for Web on http://127.0.0.1:3000/ ..." -ForegroundColor Yellow
+if (-not (Wait-HttpOk "http://127.0.0.1:3000/")) {
+  throw "Web did not become ready. Check $webLog and $webErr"
+}
+
+Write-Host ""
+Write-Host "Local stack is ready." -ForegroundColor Green
+Write-Host "API: http://127.0.0.1:8080/api/health"
+Write-Host "Web: http://127.0.0.1:3000/"
+Write-Host "Logs:"
+Write-Host "  $apiLog"
+Write-Host "  $webLog"
+
+if ($OpenBrowser) {
+  Start-Process "http://127.0.0.1:3000/"
+  Start-Process "http://127.0.0.1:3000/contracts"
+  Start-Process "http://127.0.0.1:3000/admin"
+}

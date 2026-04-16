@@ -76,7 +76,8 @@
   --radius: var(--amline-radius-md);
 }
 
-.dark {
+.dark,
+:root[data-theme='dark'] {
   --amline-bg: #0c1414;
   --amline-fg: #f3f4f6;
   --amline-fg-muted: #9ca3af;

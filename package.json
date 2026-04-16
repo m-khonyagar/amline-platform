@@ -17,7 +17,13 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "format": "npm run format --workspaces --if-present",
-    "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup.ps1"
+    "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup.ps1",
+    "local:stack": "powershell -ExecutionPolicy Bypass -File scripts/run-local-stack.ps1",
+    "local:stack:open": "powershell -ExecutionPolicy Bypass -File scripts/run-local-stack.ps1 -OpenBrowser",
+    "local:stop": "powershell -ExecutionPolicy Bypass -File scripts/stop-local-stack.ps1",
+    "verify:stack": "powershell -ExecutionPolicy Bypass -File scripts/verify-stack.ps1",
+    "load:smoke": "k6 run scripts/load/k6-api-smoke.js",
+    "load:soak": "k6 run scripts/load/k6-api-soak.js"
   },
   "devDependencies": {
     "eslint": "^9.25.1",

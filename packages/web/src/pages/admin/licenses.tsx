@@ -11,7 +11,7 @@ export default function AdminLicensesPage() {
   return (
     <PageShell title="پنل ادمین: مجوزها" subtitle="رهگیری مجوزهای قانونی، تاریخ انقضا و وضعیت انطباق کسب‌وکار.">
       <SectionCard title={loading ? 'در حال بارگذاری مجوزها...' : `تعداد مجوزها: ${licenses.length}`}>
-        {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
+        {error ? <p className="amline-form-feedback amline-form-feedback--error">{error}</p> : null}
         <DataTable
           columns={['مرجع صادرکننده', 'وضعیت', 'انقضا']}
           rows={licenses.map((license) => [license.authority, license.status, license.expiresAt])}

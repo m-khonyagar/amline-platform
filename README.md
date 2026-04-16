@@ -1,81 +1,120 @@
 # Amline Platform
 
-پلتفرمی حرفه‌ای برای خرید، فروش و اجاره‌ی ملک‌های ایران.
+Professional platform for buying, selling, renting, and operating real-estate workflows in Iran.
 
-این مخزن نسخه‌ی عمومی، تمیز و قابل‌گسترش Amline Platform است و به‌عنوان یک monorepo استاندارد و production-ready برای توسعه‌ی API، وب، SDK، هوش مصنوعی و integrationها نگه‌داری می‌شود.
+This repository is the active monorepo for the Amline platform. It currently includes a connected TypeScript API, a Next.js web application, operational admin views, contract workflows, and supporting infrastructure and documentation.
 
 ## Repository Layout
 
 ```text
 amline-platform/
 ├── packages/
-│   ├── api/            # TypeScript API service
-│   ├── web/            # Next.js web app
-│   ├── sdk/            # TypeScript SDK
+│   ├── api/            # TypeScript API
+│   ├── web/            # Next.js frontend
+│   ├── sdk/            # TypeScript SDK placeholder
 │   ├── ai/             # Python AI services
-│   └── integrations/   # External adapters & webhooks
+│   └── integrations/   # External adapters and webhooks
 ├── infrastructure/     # Docker, nginx, Kubernetes, monitoring
 ├── database/           # SQL schema, migrations, seeds
-├── docs/               # Product and engineering docs
-├── scripts/            # Local/dev/build/test/deploy scripts
+├── docs/               # Product, engineering, and ops docs
+├── scripts/            # Local run, verify, build, deploy utilities
 └── .github/workflows/  # CI/CD pipelines
 ```
 
-## Key Capabilities
+## Current Platform Shape
 
-- مدیریت املاک، جست‌وجو و فیلتر
-- صورتحساب، پرداخت و settlement
-- مدیریت مجوزهای قانونی و شکایات
-- رتبه‌بندی، افتخارات و سیستم انگیزشی
-- فرصت‌های شغلی و فرآیند جذب
-- سرویس‌های AI برای قیمت‌گذاری، پیشنهاد، تقلب و تحلیل محتوا
-- integration با سرویس‌های بیرونی و webhook fanout
+- People-facing web flows
+- Advisor-facing contract visibility
+- Admin and ops operational surfaces
+- Client-aware contract access model for `people`, `advisor`, and `ops`
+- Chat and complaint submission flows
+- Funnel, review queue, fraud desk, and audit-log endpoints
 
 ## Quick Start
 
-```bash
+```powershell
 cp .env.example .env
 npm install
 npm run build
 npm run test
-docker compose up --build
 ```
 
-## Workspace Commands
+## Local Runtime
 
-```bash
-npm run dev
+Start the current local stack:
+
+```powershell
+npm run local:stack
+```
+
+Start it and open the main pages in the browser:
+
+```powershell
+npm run local:stack:open
+```
+
+Stop the local stack:
+
+```powershell
+npm run local:stop
+```
+
+Verify that API and Web are connected and operational:
+
+```powershell
+npm run verify:stack
+```
+
+## Primary Commands
+
+```powershell
 npm run build
-npm run lint
 npm run test
+npm run local:stack
+npm run verify:stack
 ```
 
-## Packages
+## Key URLs
 
-- `packages/api`: API مبتنی بر TypeScript و Express
-- `packages/web`: وب‌اپلیکیشن Next.js برای کاربران، مشاوران و مدیریت
-- `packages/sdk`: کلاینت رسمی TypeScript برای اتصال به API
-- `packages/ai`: سرویس‌های Python برای مدل‌های تحلیلی و هوشمند
-- `packages/integrations`: adapterها و webhook orchestration
+- Web: [http://127.0.0.1:3000/](http://127.0.0.1:3000/)
+- API health: [http://127.0.0.1:8080/api/health](http://127.0.0.1:8080/api/health)
+- Contracts: [http://127.0.0.1:3000/contracts](http://127.0.0.1:3000/contracts)
+- Admin: [http://127.0.0.1:3000/admin](http://127.0.0.1:3000/admin)
 
-## Production Notes
+## Environment
 
-- متغیرهای محیطی از `.env.example` شروع می‌شوند.
-- کانفیگ Docker و Nginx در `infrastructure/` نگه‌داری می‌شود.
-- migrations و seeds در `database/` قرار دارند.
-- pipelineهای build/test/deploy در `.github/workflows/` تعریف شده‌اند.
+Start from [.env.example](E:\CTO\amline-platform\.env.example).
+
+Important variables:
+
+- `PORT`
+- `WEB_PORT`
+- `NEXT_PUBLIC_API_BASE_URL`
+- `DATABASE_URL`
+- `REDIS_URL`
+- `JWT_SECRET`
+
+## Docker
+
+The repository includes a baseline [docker-compose.yml](E:\CTO\amline-platform\docker-compose.yml) and additional deployment assets in [infrastructure](E:\CTO\amline-platform\infrastructure).
 
 ## Documentation
 
-- [API](docs/API.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Deployment](docs/DEPLOYMENT.md)
-- [Development](docs/DEVELOPMENT.md)
-- [Database](docs/DATABASE.md)
-- [Testing](docs/TESTING.md)
-- [Security](docs/SECURITY.md)
-- [Contributing](CONTRIBUTING.md)
+- [API](E:\CTO\amline-platform\docs\API.md)
+- [Architecture](E:\CTO\amline-platform\docs\ARCHITECTURE.md)
+- [Deployment](E:\CTO\amline-platform\docs\DEPLOYMENT.md)
+- [Development](E:\CTO\amline-platform\docs\DEVELOPMENT.md)
+- [Database](E:\CTO\amline-platform\docs\DATABASE.md)
+- [Testing](E:\CTO\amline-platform\docs\TESTING.md)
+- [Security](E:\CTO\amline-platform\docs\SECURITY.md)
+- [Local Dev](E:\CTO\amline-platform\docs\LOCAL_DEV.md)
+- [Scale Readiness](E:\CTO\amline-platform\docs\SCALE_READINESS.md)
+- [Contributing](E:\CTO\amline-platform\CONTRIBUTING.md)
+
+## Production Note
+
+The current `web + api` stack is locally integrated and operational. `sdk`, `ai`, and `integrations` remain partially scaffolded and should be treated as follow-on delivery tracks for full production rollout.
 
 ## License
 
-این پروژه تحت [MIT](LICENSE) منتشر شده است.
+This project is released under the [MIT License](E:\CTO\amline-platform\LICENSE).

@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAsyncData } from '../../hooks/useAsyncData';
+import { AppShellLayout } from '../../components/Common/AppShellLayout';
+import { Badge } from '../../components/UI/Badge';
+import { EmptyState } from '../../components/UI/EmptyState';
+import { useAuth } from '../../hooks/useAuth';
 import { deleteDraftContract, fetchContracts } from '../../services/api';
+import { getContractStatusMeta } from '../../lib/status';
 
 type ContractTab = 'active' | 'completed' | 'cancelled';
-type ContractStatus =
-  | 'awaiting_you'
-  | 'awaiting_owner'
-  | 'awaiting_tenant'
-  | 'awaiting_legal'
-  | 'awaiting_tracking'
-  | 'finalized'
-  | 'cancelled';
-
 type ContractItem = Awaited<ReturnType<typeof fetchContracts>>[number];
 
 const tabConfig: Array<{ key: ContractTab; label: string }> = [
@@ -21,19 +17,13 @@ const tabConfig: Array<{ key: ContractTab; label: string }> = [
   { key: 'active', label: 'جاری' },
 ];
 
-const statusMap: Record<ContractStatus, { label: string; tone: 'danger' | 'warning' | 'info' | 'success' }> = {
-  awaiting_you: { label: 'در انتظار شما', tone: 'danger' },
-  awaiting_owner: { label: 'در انتظار مالک', tone: 'warning' },
-  awaiting_tenant: { label: 'در انتظار مستاجر', tone: 'warning' },
-  awaiting_legal: { label: 'در انتظار کارشناس', tone: 'info' },
-  awaiting_tracking: { label: 'در انتظار کد رهگیری', tone: 'info' },
-  finalized: { label: 'قرارداد نهایی', tone: 'success' },
-  cancelled: { label: 'لغو شده', tone: 'danger' },
-};
-
 export default function ContractsIndexPage() {
   const router = useRouter();
-  const contractsQuery = useAsyncData(fetchContracts, []);
+  const { user } = useAuth();
+  const contractsQuery = useAsyncData(
+    () => fetchContracts({ client: 'people', actorId: user?.id ?? 'acct_1', teamId: 'team_north' }),
+    [user?.id],
+  );
   const [contracts, setContracts] = useState<ContractItem[]>([]);
   const [activeTab, setActiveTab] = useState<ContractTab>('active');
   const [query, setQuery] = useState('');
@@ -52,7 +42,7 @@ export default function ContractsIndexPage() {
         return true;
       }
 
-      const haystack = `${item.title} ${item.counterpartLabel ?? ''} ${item.message}`;
+      const haystack = `${item.title} ${item.counterpartLabel ?? ''} ${item.message} ${item.propertyLabel ?? ''}`;
       return haystack.includes(query.trim());
     });
   }, [activeTab, contracts, query]);
@@ -73,17 +63,17 @@ export default function ContractsIndexPage() {
   }
 
   return (
-    <div className="amline-contracts-page">
-      <header className="amline-contracts-page__topbar">
-        <button type="button" className="amline-contracts-page__icon-button" onClick={() => router.back()} aria-label="بازگشت">
-          ‹
+    <AppShellLayout
+      title="قراردادهای من"
+      subtitle="قراردادها را بر اساس وضعیت، اقدام بعدی و میزان فوریت پیگیری کنید."
+      activeNavHref="/contracts"
+      topbarAction={
+        <button type="button" className="amline-button amline-button--primary" onClick={() => router.push('/contracts/new')}>
+          ایجاد قرارداد
         </button>
-        <h1>قراردادهای من</h1>
-        <button type="button" className="amline-contracts-page__icon-button" aria-label="جست‌وجو">
-          ⌕
-        </button>
-      </header>
-
+      }
+      trustItems={['رهگیری رسمی', 'اقدام بعدی شفاف', 'پشتیبانی حقوقی']}
+    >
       <div className="amline-contracts-page__search">
         <input
           value={query}
@@ -112,34 +102,43 @@ export default function ContractsIndexPage() {
         })}
       </div>
 
-      <main className="amline-contracts-page__content">
+      <section className="amline-contracts-page__content">
+        {contractsQuery.error ? <p className="amline-form-feedback amline-form-feedback--error">دریافت قراردادها با خطا مواجه شد. لطفا دوباره تلاش کنید.</p> : null}
         {filteredContracts.length === 0 ? (
-          <section className="amline-contracts-empty">
-            <div className="amline-contracts-empty__illustration">
-              <div className="amline-contracts-empty__folder" />
-              <div className="amline-contracts-empty__magnifier" />
-            </div>
-            <p>
-              {activeTab === 'active' && 'هنوز هیچ قرارداد جاری نداری!'}
-              {activeTab === 'completed' && 'هیچ قرارداد تکمیل‌شده‌ای نداری!'}
-              {activeTab === 'cancelled' && 'هیچ قرارداد لغو‌شده‌ای نداری!'}
-            </p>
-            <button type="button" className="amline-button amline-button--primary" onClick={() => router.push('/contracts/new')}>
-              ایجاد قرارداد
-            </button>
-          </section>
+          <EmptyState
+            title={query.trim() ? 'نتیجه‌ای پیدا نشد' : activeTab === 'active' ? 'هنوز قرارداد جاری ندارید' : activeTab === 'completed' ? 'قرارداد نهایی‌شده‌ای ندارید' : 'قرارداد لغوشده‌ای ثبت نشده است'}
+            description={
+              query.trim()
+                ? 'عبارت جست‌وجو را تغییر دهید یا تب وضعیت را عوض کنید.'
+                : activeTab === 'active'
+                  ? 'با ایجاد قرارداد جدید می‌توانید روند امضا و پیگیری را شروع کنید.'
+                  : activeTab === 'completed'
+                    ? 'پس از نهایی‌سازی قراردادها، بایگانی کامل آن‌ها در این بخش نمایش داده می‌شود.'
+                    : 'در حال حاضر هیچ پرونده لغوشده‌ای برای شما ثبت نشده است.'
+            }
+            actions={
+              <>
+                <button type="button" className="amline-button amline-button--primary" onClick={() => router.push('/contracts/new')}>
+                  ایجاد قرارداد
+                </button>
+                {query.trim() ? (
+                  <button type="button" className="amline-button amline-button--ghost" onClick={() => setQuery('')}>
+                    پاک کردن جست‌وجو
+                  </button>
+                ) : null}
+              </>
+            }
+          />
         ) : (
           <div className="amline-contract-list-mobile">
             {filteredContracts.map((item) => {
-              const status = statusMap[item.status];
+              const status = getContractStatusMeta(item.status);
 
               return (
                 <article key={item.id} className="amline-contract-mobile-card">
                   <div className="amline-contract-mobile-card__header">
                     <div className="amline-contract-mobile-card__meta">
-                      <span className={`amline-contract-mobile-card__status amline-contract-mobile-card__status--${status.tone}`}>
-                        {status.label}
-                      </span>
+                      <Badge tone={status.tone}>{status.label}</Badge>
                       <span className="amline-contract-mobile-card__date">{item.date}</span>
                     </div>
                     <div className="amline-contract-mobile-card__title-group">
@@ -149,12 +148,11 @@ export default function ContractsIndexPage() {
                   </div>
 
                   <div className="amline-contract-mobile-card__message">
-                    <span aria-hidden="true">i</span>
-                    <p>{item.message}</p>
+                    <p>{status.nextAction}</p>
                   </div>
 
                   <div className="amline-contract-mobile-card__actions">
-                    <button type="button" className="amline-contract-mobile-card__primary" onClick={() => router.push('/contracts/new')}>
+                    <button type="button" className="amline-contract-mobile-card__primary" onClick={() => router.push(`/contracts/${item.id}`)}>
                       مشاهده قرارداد
                     </button>
 
@@ -173,29 +171,7 @@ export default function ContractsIndexPage() {
             })}
           </div>
         )}
-      </main>
-
-      <nav className="amline-contracts-bottom-nav" aria-label="پیمایش اصلی">
-        <button type="button" onClick={() => router.push('/account/profile')}>
-          <span>◉</span>
-          <span>حساب من</span>
-        </button>
-        <button type="button" onClick={() => router.push('/chat')}>
-          <span>◌</span>
-          <span>گفتگو</span>
-        </button>
-        <button type="button" className="is-plus" onClick={() => router.push('/contracts/new')} aria-label="ایجاد قرارداد">
-          +
-        </button>
-        <button type="button" className="is-active" onClick={() => router.push('/contracts')}>
-          <span>▣</span>
-          <span>قراردادهای من</span>
-        </button>
-        <button type="button" onClick={() => router.push('/')}>
-          <span>⌂</span>
-          <span>خانه</span>
-        </button>
-      </nav>
-    </div>
+      </section>
+    </AppShellLayout>
   );
 }

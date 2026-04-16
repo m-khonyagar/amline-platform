@@ -1,37 +1,32 @@
-import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { PageShell } from '../../components/Common/PageShell';
-import { SectionCard } from '../../components/UI/SectionCard';
-import { requestPasswordReset } from '../../services/api';
+import { Icon } from '../../components/UI/Icon';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [identity, setIdentity] = useState('');
-  const [message, setMessage] = useState('');
 
   return (
-    <PageShell title="بازیابی دسترسی" subtitle="ارسال لینک یا کد بازیابی برای ورود دوباره به حساب کاربری.">
-      <SectionCard title="درخواست بازیابی">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void requestPasswordReset(identity || 'کاربر')
-              .then((payload) => setMessage(payload.message));
-          }}
-          style={{ display: 'grid', gap: '0.75rem', maxWidth: '420px' }}
-        >
-          <input
-            placeholder="شماره موبایل یا ایمیل"
-            value={identity}
-            onChange={(event) => setIdentity(event.target.value)}
-          />
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button type="submit">ارسال لینک بازیابی</button>
-            <button type="button" onClick={() => router.push('/auth/login')}>بازگشت به ورود</button>
+    <main className="amline-auth-page">
+      <section className="amline-auth-shell">
+        <aside className="amline-auth-story">
+          <span className="amline-auth-story__eyebrow">احراز هویت OTP-first</span>
+          <h1>بازیابی جداگانه رمز عبور در این نسخه فعال نیست</h1>
+          <p>ورود املاین بر پایه تایید شماره موبایل است و نیاز به رمز عبور مستقل ندارد. برای ورود یا بازیابی دسترسی، همان مسیر تایید شماره را ادامه دهید.</p>
+        </aside>
+        <section className="amline-auth-card">
+          <header className="amline-auth-card__header">
+            <span className="amline-auth-card__badge">بازیابی از مسیر ورود</span>
+            <h2>بازگشت به ورود امن</h2>
+            <p>کد تایید فقط به شماره شما ارسال می‌شود و پس از تایید، دسترسی حساب بازیابی خواهد شد.</p>
+          </header>
+          <div className="amline-auth-trust">
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> بدون نیاز به رمز عبور ایستا</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> ورود و بازیابی در یک جریان یکپارچه</span>
           </div>
-        </form>
-        {message ? <p>{message}</p> : null}
-      </SectionCard>
-    </PageShell>
+          <button type="button" className="amline-button amline-button--primary" onClick={() => router.push('/auth/login')}>
+            بازگشت به ورود موبایلی
+          </button>
+        </section>
+      </section>
+    </main>
   );
 }

@@ -3,32 +3,50 @@ version: "3.9"
 services:
   api:
     build: ./packages/api
+    restart: unless-stopped
     environment:
       PORT: 8080
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/amline
       REDIS_URL: redis://redis:6379
+      MAX_IN_FLIGHT_REQUESTS: 5000
+      READY_IN_FLIGHT_THRESHOLD: 4500
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       - postgres
       - redis
 
   web:
     build: ./packages/web
+    restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       - api
 
   ai:
     build: ./packages/ai
+    restart: unless-stopped
     depends_on:
       - postgres
 
   postgres:
     image: postgres:15
+    restart: unless-stopped
     environment:
       POSTGRES_DB: amline
       POSTGRES_USER: postgres
@@ -38,5 +56,6 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"

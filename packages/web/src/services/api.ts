@@ -55,6 +55,16 @@ export interface AccountProfile {
   membership: string;
 }
 
+export interface AccountProfileDetails {
+  completionPercent: number;
+  identityStatus: 'verified' | 'pending';
+  agencyName: string;
+  supportPhone: string;
+  supportHours: string;
+  whatsapp: string;
+  preferences: Array<{ key: string; label: string; enabled: boolean }>;
+}
+
 export interface ContractSummary {
   id: string;
   title: string;
@@ -71,6 +81,25 @@ export interface ContractSummary {
     | 'cancelled';
   message: string;
   draft?: boolean;
+  visibilityScope?: 'people_only' | 'shared' | 'advisor_managed' | 'team';
+  createdByClient?: 'people' | 'advisor';
+  advisorId?: string;
+  teamId?: string;
+  propertyLabel?: string;
+  peopleNextStep?: string;
+  advisorNextStep?: string;
+  opsNextStep?: string;
+}
+
+export type ContractClientContext = 'people' | 'advisor' | 'ops';
+
+export interface ContractDetailSummary {
+  contract: ContractSummary;
+  client: ContractClientContext;
+  viewKind: 'people_view' | 'advisor_view' | 'ops_view';
+  timeline: Array<{ label: string; status: 'done' | 'current' | 'next' }>;
+  actions: string[];
+  visibilityReason: string;
 }
 
 export interface AccountCollectionItem {
@@ -123,6 +152,12 @@ export interface SupportComplaintResult {
   message: string;
 }
 
+export interface FunnelMetricSummary {
+  key: string;
+  label: string;
+  value: number;
+}
+
 async function fetchCollection<T>(path: string): Promise<T[]> {
   const response = await fetch(`${api.baseUrl}${path}`);
 
@@ -168,8 +203,90 @@ export async function fetchProfile(): Promise<AccountProfile> {
   return (await response.json()) as AccountProfile;
 }
 
-export async function fetchContracts(): Promise<ContractSummary[]> {
-  return fetchCollection<ContractSummary>('/contracts');
+export async function fetchProfileDetails(): Promise<AccountProfileDetails> {
+  const response = await fetch(`${api.baseUrl}/account/details`);
+
+  if (!response.ok) {
+    throw new Error('Failed to load account details.');
+  }
+
+  return (await response.json()) as AccountProfileDetails;
+}
+
+export async function updateProfileDetails(
+  payload: Partial<Pick<AccountProfileDetails, 'agencyName' | 'supportPhone' | 'supportHours' | 'whatsapp'>>,
+): Promise<AccountProfileDetails> {
+  const response = await fetch(`${api.baseUrl}/account/details`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update account details.');
+  }
+
+  return (await response.json()) as AccountProfileDetails;
+}
+
+export async function updateProfilePreference(
+  key: string,
+  enabled: boolean,
+): Promise<{ key: string; label: string; enabled: boolean }> {
+  const response = await fetch(`${api.baseUrl}/account/preferences`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ key, enabled }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update preference.');
+  }
+
+  return (await response.json()) as { key: string; label: string; enabled: boolean };
+}
+
+type ContractFetchOptions = {
+  client?: ContractClientContext;
+  actorId?: string;
+  teamId?: string;
+};
+
+function buildContractQuery(options?: ContractFetchOptions): string {
+  const searchParams = new URLSearchParams();
+
+  if (options?.client) {
+    searchParams.set('client', options.client);
+  }
+
+  if (options?.actorId) {
+    searchParams.set('actorId', options.actorId);
+  }
+
+  if (options?.teamId) {
+    searchParams.set('teamId', options.teamId);
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
+export async function fetchContracts(options?: ContractFetchOptions): Promise<ContractSummary[]> {
+  return fetchCollection<ContractSummary>(`/contracts${buildContractQuery(options)}`);
+}
+
+export async function fetchContractDetail(id: string, options?: ContractFetchOptions): Promise<ContractDetailSummary> {
+  const response = await fetch(`${api.baseUrl}/contracts/${id}${buildContractQuery(options)}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to load contract detail.');
+  }
+
+  return (await response.json()) as ContractDetailSummary;
 }
 
 export async function deleteDraftContract(id: string): Promise<void> {
@@ -265,4 +382,15 @@ export async function requestPasswordReset(
   return {
     message: `لینک بازیابی برای ${identity} ارسال شد.`,
   };
+}
+
+export async function fetchFunnelMetrics(scope: 'marketplace' | 'operations'): Promise<FunnelMetricSummary[]> {
+  const response = await fetch(`${api.baseUrl}/analytics/funnel?scope=${scope}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to load funnel metrics.');
+  }
+
+  const payload = (await response.json()) as { items?: FunnelMetricSummary[] };
+  return payload.items ?? [];
 }

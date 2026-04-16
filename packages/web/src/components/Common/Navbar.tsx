@@ -1,16 +1,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-
-const navItems = [
-  { href: '/', label: 'خانه' },
-  { href: '/contracts/new', label: 'انعقاد قرارداد' },
-  { href: '/agent/dashboard', label: 'پنل مشاور' },
-  { href: '/admin/licenses', label: 'پنل مدیریت' },
-  { href: '/account/profile', label: 'حساب کاربری' },
-];
+import { useAuth } from '../../hooks/useAuth';
+import { publicNavItems } from '../../config/navigation';
 
 export function Navbar() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   return (
     <header className="amline-topbar">
@@ -19,12 +14,12 @@ export function Navbar() {
           <img src="/assets/amline/logo.svg" alt="Amline" />
           <span>
             <span className="amline-brand__name">املاین</span>
-            <span className="amline-brand__caption">املاک امن و آنلاین برای مشاور، مالک و خریدار</span>
+            <span className="amline-brand__caption">زیرساخت یکپارچه خرید، فروش و اجاره ملک</span>
           </span>
         </Link>
 
         <nav className="amline-nav" aria-label="Main navigation">
-          {navItems.map((item) => {
+          {publicNavItems.map((item) => {
             const isActive = item.href === '/'
               ? router.pathname === item.href
               : router.pathname.startsWith(item.href);
@@ -34,14 +29,15 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={`amline-nav__link${isActive ? ' amline-nav__link--active' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
               >
                 {item.label}
               </Link>
             );
           })}
 
-          <Link href="/auth/login" className="amline-nav__cta">
-            ورود به پلتفرم
+          <Link href={isAuthenticated ? '/account/profile' : '/auth/login'} className="amline-nav__cta">
+            {isAuthenticated ? 'ورود به حساب' : 'شروع با موبایل'}
           </Link>
         </nav>
       </div>

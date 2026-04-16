@@ -1,4 +1,27 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: amline-services
+  name: amline-api
+  labels:
+    app.kubernetes.io/name: amline-api
+spec:
+  selector:
+    app.kubernetes.io/name: amline-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amline-web
+  labels:
+    app.kubernetes.io/name: amline-web
+spec:
+  selector:
+    app.kubernetes.io/name: amline-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

@@ -11,7 +11,7 @@ export default function InvoicesPage() {
   return (
     <PageShell title="حساب کاربری: فاکتورها" subtitle="نمایش فاکتورهای صادر شده، مبالغ و زمان انتشار هر صورتحساب.">
       <SectionCard title={loading ? 'در حال بارگذاری فاکتورها...' : 'فاکتورهای حساب'}>
-        {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
+        {error ? <p className="amline-form-feedback amline-form-feedback--error">{error}</p> : null}
         <DataTable
           columns={['شماره فاکتور', 'مبلغ', 'وضعیت', 'تاریخ صدور']}
           rows={invoices.map((invoice) => [

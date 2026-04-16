@@ -11,7 +11,7 @@ export default function AdminAchievementsPage() {
   return (
     <PageShell title="پنل ادمین: افتخارات" subtitle="مدیریت leaderboard، انگیزش فروش و تخصیص نشان‌های عملکردی.">
       <SectionCard title={loading ? 'در حال بارگذاری...' : 'فهرست رتبه‌ها'}>
-        {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
+        {error ? <p className="amline-form-feedback amline-form-feedback--error">{error}</p> : null}
         <DataTable columns={['کاربر', 'نشان', 'امتیاز']} rows={rows.map((item) => [item.userId, item.title, item.points])} />
       </SectionCard>
     </PageShell>

@@ -25,4 +25,8 @@ dev-stack.err.log
 
 # runtime / local data
 .runtime-logs/
+.runtime-pids/
 packages/api/database/
+
+# Extracted Word/XML spec dumps (keep source .docx out of repo)
+docs/imported-spec-summaries/

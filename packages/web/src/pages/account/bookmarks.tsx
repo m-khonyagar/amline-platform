@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { PageShell } from '../../components/Common/PageShell';
+import { Icon } from '../../components/UI/Icon';
 import { SectionCard } from '../../components/UI/SectionCard';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { fetchAccountBookmarks } from '../../services/api';
@@ -18,7 +19,7 @@ export default function AccountBookmarksPage() {
                 <strong>{item.title}</strong>
                 <span>{item.city}</span>
               </div>
-              <span>⌂</span>
+              <span><Icon name="home" className="amline-icon amline-icon--sm" /></span>
             </button>
           ))}
         </div>

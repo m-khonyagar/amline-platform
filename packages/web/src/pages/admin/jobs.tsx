@@ -11,7 +11,7 @@ export default function AdminJobsPage() {
   return (
     <PageShell title="پنل ادمین: استخدام" subtitle="نمایش فرصت‌های شغلی باز، مکان استخدام و نوع قراردادها.">
       <SectionCard title={loading ? 'در حال بارگذاری فرصت‌ها...' : 'مدیریت موقعیت‌های استخدامی'}>
-        {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
+        {error ? <p className="amline-form-feedback amline-form-feedback--error">{error}</p> : null}
         <DataTable columns={['عنوان', 'مکان', 'نوع همکاری']} rows={jobs.map((job) => [job.title, job.location, job.type])} />
       </SectionCard>
     </PageShell>

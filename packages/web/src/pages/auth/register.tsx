@@ -1,46 +1,32 @@
-import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { PageShell } from '../../components/Common/PageShell';
-import { SectionCard } from '../../components/UI/SectionCard';
-import { useAuth } from '../../hooks/useAuth';
+import { Icon } from '../../components/UI/Icon';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
-  const [fullName, setFullName] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [city, setCity] = useState('');
-  const [message, setMessage] = useState('');
 
   return (
-    <PageShell title="ثبت نام" subtitle="ساخت حساب کاربری اولیه برای شروع فلوهای قرارداد، گفتگو و پنل شخصی.">
-      <SectionCard title="ایجاد حساب">
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            register({
-              id: 'acct_local',
-              fullName: fullName || 'کاربر جدید',
-              mobile: mobile || '09120000000',
-              city: city || 'تهران',
-              role: 'buyer',
-              membership: 'Amline Starter',
-            });
-            setMessage(`حساب ${fullName || 'کاربر جدید'} ایجاد شد و می‌توانید وارد پنل شوید.`);
-            void router.push('/account/profile');
-          }}
-          style={{ display: 'grid', gap: '0.75rem', maxWidth: '480px' }}
-        >
-          <input placeholder="نام و نام خانوادگی" value={fullName} onChange={(event) => setFullName(event.target.value)} />
-          <input placeholder="شماره موبایل" value={mobile} onChange={(event) => setMobile(event.target.value)} />
-          <input placeholder="شهر" value={city} onChange={(event) => setCity(event.target.value)} />
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button type="submit">ایجاد حساب</button>
-            <button type="button" onClick={() => router.push('/auth/login')}>رفتن به ورود</button>
+    <main className="amline-auth-page">
+      <section className="amline-auth-shell">
+        <aside className="amline-auth-story">
+          <span className="amline-auth-story__eyebrow">ثبت نام یکپارچه شده است</span>
+          <h1>در املاین، ورود و ساخت حساب یک مسیر واحد دارد</h1>
+          <p>برای سادگی و امنیت بیشتر، ساخت حساب جدید با تایید شماره موبایل انجام می‌شود و فرم جداگانه ثبت نام حذف شده است.</p>
+        </aside>
+        <section className="amline-auth-card">
+          <header className="amline-auth-card__header">
+            <span className="amline-auth-card__badge">ساخت حساب خودکار</span>
+            <h2>ثبت نام از مسیر ورود</h2>
+            <p>اگر حساب نداشته باشید، پس از تایید شماره موبایل به صورت خودکار حساب شما ایجاد می‌شود.</p>
+          </header>
+          <div className="amline-auth-trust">
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> بدون فرم اضافه و ورود کم‌اصطکاک</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> تایید شماره به‌عنوان نقطه ورود و ثبت حساب</span>
           </div>
-        </form>
-        {message ? <p>{message}</p> : null}
-      </SectionCard>
-    </PageShell>
+          <button type="button" className="amline-button amline-button--primary" onClick={() => router.push('/auth/login')}>
+            ادامه با ورود موبایلی
+          </button>
+        </section>
+      </section>
+    </main>
   );
 }
