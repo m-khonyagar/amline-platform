@@ -22,3 +22,7 @@ backend/backend/data/
 **/playwright-report/
 dev-stack.out.log
 dev-stack.err.log
+
+# runtime / local data
+.runtime-logs/
+packages/api/database/

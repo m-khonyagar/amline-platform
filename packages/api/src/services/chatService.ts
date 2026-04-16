@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 export type ConversationRecord = {
   id: string;
   title: string;
@@ -77,6 +80,96 @@ const messages: Record<string, ChatMessage[]> = {
   ],
 };
 
+type ChatStore = {
+  version: 1;
+  messages: Record<string, ChatMessage[]>;
+  conversations: Record<string, Pick<ConversationRecord, 'preview' | 'timeLabel' | 'unread' | 'pinned'>>;
+};
+
+const storePath = path.resolve(
+  process.env.AMLINE_CHAT_STORE_PATH?.trim() || path.join(process.cwd(), 'database', 'amline-chat-store.json'),
+);
+
+function readStore(): ChatStore | null {
+  try {
+    if (!fs.existsSync(storePath)) {
+      return null;
+    }
+
+    const raw = fs.readFileSync(storePath, 'utf8');
+    if (!raw.trim()) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<ChatStore>;
+    if (parsed.version !== 1 || typeof parsed.messages !== 'object' || typeof parsed.conversations !== 'object') {
+      return null;
+    }
+
+    return parsed as ChatStore;
+  } catch {
+    return null;
+  }
+}
+
+function writeStore(store: ChatStore): void {
+  const dir = path.dirname(storePath);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(storePath, `${JSON.stringify(store, null, 2)}\n`, 'utf8');
+}
+
+function getConversationDefaults(): Record<string, ConversationRecord> {
+  return Object.fromEntries(conversations.map((item) => [item.id, item]));
+}
+
+function hydrateFromStore(): void {
+  const store = readStore();
+  if (!store) {
+    return;
+  }
+
+  // Restore messages
+  for (const [conversationId, storedMessages] of Object.entries(store.messages)) {
+    if (!Array.isArray(storedMessages)) {
+      continue;
+    }
+    messages[conversationId] = storedMessages;
+  }
+
+  // Restore conversation preview/timeLabel/unread/pinned
+  const byId = getConversationDefaults();
+  for (const [id, patch] of Object.entries(store.conversations)) {
+    const convo = byId[id];
+    if (!convo) continue;
+    if (typeof patch.preview === 'string') convo.preview = patch.preview;
+    if (typeof patch.timeLabel === 'string') convo.timeLabel = patch.timeLabel;
+    if (typeof patch.unread === 'number') convo.unread = patch.unread;
+    if (typeof patch.pinned === 'boolean') convo.pinned = patch.pinned;
+  }
+}
+
+function persist(): void {
+  const store: ChatStore = {
+    version: 1,
+    messages,
+    conversations: Object.fromEntries(
+      conversations.map((c) => [
+        c.id,
+        {
+          preview: c.preview,
+          timeLabel: c.timeLabel,
+          unread: c.unread,
+          pinned: c.pinned,
+        },
+      ]),
+    ),
+  };
+
+  writeStore(store);
+}
+
+hydrateFromStore();
+
 export const chatService = {
   list(): ConversationRecord[] {
     return conversations;
@@ -102,6 +195,7 @@ export const chatService = {
       conversation.timeLabel = 'الان';
     }
 
+    persist();
     return nextMessage;
   },
 };
