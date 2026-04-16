@@ -35,12 +35,8 @@ export function AppShellLayout({
       </header>
 
       <main className="amline-app-shell__content">
-        {subtitle ? (
-          <section className="amline-app-shell__hero">
-            <div>
-              <h2>{title}</h2>
-              <p>{subtitle}</p>
-            </div>
+        {trustItems.length > 0 ? (
+          <section className="amline-app-shell__trust-band" aria-label="تضمین‌های مسیر">
             <TrustPanel items={trustItems} compact />
           </section>
         ) : null}

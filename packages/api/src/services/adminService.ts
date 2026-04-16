@@ -22,7 +22,7 @@ export type FraudCaseItem = {
 
 export type AuditLogItem = {
   id: string;
-  entityType: 'contract' | 'review_case' | 'fraud_case';
+  entityType: 'contract' | 'review_case' | 'fraud_case' | 'commission';
   entityId: string;
   action: string;
   actor: string;
@@ -90,7 +90,7 @@ function timestamp(): string {
   }).format(new Date());
 }
 
-function recordAudit(
+export function recordAudit(
   entityType: AuditLogItem['entityType'],
   entityId: string,
   action: string,
@@ -140,12 +140,30 @@ export const adminService = {
     recordAudit('fraud_case', item.id, `decision_${decision}`, `Fraud case ${item.id} moved to ${item.status}.`, 'ops.risk', 'ops');
     return true;
   },
-  auditLog(entityId?: string): AuditLogItem[] {
-    if (!entityId) {
-      return auditLog;
+  auditLog(filters?: { entityId?: string; actor?: string; action?: string }): AuditLogItem[] {
+    let rows = auditLog;
+    if (filters?.entityId) {
+      const id = filters.entityId.toLowerCase();
+      rows = rows.filter((item) => item.entityId.toLowerCase() === id);
     }
+    if (filters?.actor) {
+      const a = filters.actor.toLowerCase();
+      rows = rows.filter((item) => item.actor.toLowerCase().includes(a));
+    }
+    if (filters?.action) {
+      const ac = filters.action.toLowerCase();
+      rows = rows.filter((item) => item.action.toLowerCase().includes(ac));
+    }
+    return rows;
+  },
 
-    return auditLog.filter((item) => item.entityId.toLowerCase() === entityId.toLowerCase());
+  auditLogExportCsv(filters?: { entityId?: string }): string {
+    const rows = this.auditLog(filters);
+    const header = 'زمان,موجودیت,شناسه,عملیات,عامل,توضیح';
+    const lines = rows.map((r) =>
+      [r.createdAt, r.entityType, r.entityId, r.action, r.actor, `"${r.note.replace(/"/g, '""')}"`].join(','),
+    );
+    return [header, ...lines].join('\n');
   },
   funnel(scope: FunnelScope): Array<{ key: string; label: string; value: number }> {
     const properties = propertyService.list();

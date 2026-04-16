@@ -11,8 +11,12 @@ import { propertyRoutes } from './routes/properties';
 import { accountService } from './services/accountService';
 import { adminService } from './services/adminService';
 import { aiService } from './services/aiService';
+import { authService, validateIranMobile } from './services/authService';
 import { chatService } from './services/chatService';
+import { commissionService } from './services/commissionService';
 import { contractService } from './services/contractService';
+import { crmService } from './services/crmService';
+import { needsService } from './services/needsService';
 import { supportService } from './services/supportService';
 import { logger } from './utils/logger';
 
@@ -40,6 +44,31 @@ const runtimeState = {
   shuttingDown: false,
 };
 
+/** SEC-005 — سقف تقریبی درخواست در هر دقیقه برای هر IP */
+const ipRateBuckets = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 100;
+
+function clientIpFrom(request: IncomingMessage): string {
+  const xff = request.headers['x-forwarded-for'];
+  const raw = Array.isArray(xff) ? xff[0] : xff;
+  if (raw) {
+    return raw.split(',')[0].trim();
+  }
+  return request.socket.remoteAddress ?? 'local';
+}
+
+function allowIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  let bucket = ipRateBuckets.get(ip);
+  if (!bucket || now - bucket.windowStart > RATE_LIMIT_WINDOW_MS) {
+    bucket = { count: 0, windowStart: now };
+  }
+  bucket.count += 1;
+  ipRateBuckets.set(ip, bucket);
+  return bucket.count <= RATE_LIMIT_MAX;
+}
+
 function sendJson(
   response: ServerResponse,
   statusCode: number,
@@ -49,7 +78,7 @@ function sendJson(
   response.writeHead(statusCode, {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,X-Request-Id',
+    'Access-Control-Allow-Headers': 'Content-Type,X-Request-Id,Authorization',
     'Cache-Control': 'no-store',
     'Content-Type': 'application/json; charset=utf-8',
     ...extraHeaders,
@@ -165,8 +194,12 @@ export function createApp() {
     adminService,
     accountService,
     aiService,
+    authService,
     chatService,
+    commissionService,
     contractService,
+    crmService,
+    needsService,
     supportService,
   };
 }
@@ -185,6 +218,26 @@ export async function requestListener(
 
   if (method === 'OPTIONS') {
     sendJson(response, 200, { ok: true }, { 'X-Request-Id': requestId });
+    return;
+  }
+
+  const skipRateLimit =
+    url.pathname === '/api/health' ||
+    url.pathname === '/api/live' ||
+    url.pathname === '/api/ready' ||
+    url.pathname === '/api/metrics' ||
+    url.pathname === '/health' ||
+    url.pathname === '/live' ||
+    url.pathname === '/ready' ||
+    url.pathname === '/metrics';
+
+  if (!skipRateLimit && !allowIpRateLimit(clientIpFrom(request))) {
+    sendJson(
+      response,
+      429,
+      { error: 'درخواست بیش از حد مجاز. لطفاً بعداً تلاش کنید.', requestId, code: 'SEC-005' },
+      { 'Retry-After': '60', 'X-Request-Id': requestId },
+    );
     return;
   }
 
@@ -284,15 +337,77 @@ export async function requestListener(
 
     if (method === 'GET' && url.pathname === '/api/contracts') {
       const viewer = parseContractViewer(url);
-      sendJson(response, 200, { items: app.contractService.list(viewer.client, viewer.actorId, viewer.teamId) }, { 'X-Request-Id': requestId });
+      const status = url.searchParams.get('status') ?? undefined;
+      const q = url.searchParams.get('q') ?? undefined;
+      sendJson(
+        response,
+        200,
+        { items: app.contractService.list(viewer.client, viewer.actorId, viewer.teamId, { status, q }) },
+        { 'X-Request-Id': requestId },
+      );
+      return;
+    }
+
+    const contractPdfMatch = url.pathname.match(/^\/api\/contracts\/([^/]+)\/pdf$/);
+    if (method === 'GET' && contractPdfMatch) {
+      const viewer = parseContractViewer(url);
+      const id = contractPdfMatch[1];
+      const resolved = app.contractService.resolveDetail(id, viewer.client, viewer.actorId, viewer.teamId);
+      if (resolved.kind === 'not_found') {
+        sendJson(response, 404, { error: 'قرارداد یافت نشد', requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      if (resolved.kind === 'forbidden') {
+        sendJson(response, 403, { error: resolved.message, scenarioId: resolved.scenarioId, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      const name = app.contractService.pdfFilename(id);
+      sendJson(response, 200, { fileName: name, note: 'REP-001 — خروجی PDF شبیه‌سازی‌شده', requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    const contractSignMatch = url.pathname.match(/^\/api\/contracts\/([^/]+)\/sign$/);
+    if (method === 'POST' && contractSignMatch) {
+      const viewer = parseContractViewer(url);
+      const id = contractSignMatch[1];
+      const body = await readJsonBody<{ userId?: string }>(request);
+      const userId = body?.userId ?? viewer.actorId;
+      const result = app.contractService.signContract(id, userId, viewer.client);
+      if (!result.ok) {
+        sendJson(response, result.http, { error: result.error, code: result.code, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, message: result.message, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    const contractDraftMatch = url.pathname.match(/^\/api\/contracts\/([^/]+)\/draft$/);
+    if (method === 'PUT' && contractDraftMatch) {
+      const id = contractDraftMatch[1];
+      const body = await readJsonBody<{ version?: number }>(request);
+      const version = typeof body?.version === 'number' ? body.version : -1;
+      const result = app.contractService.saveDraft(id, version);
+      if (!result.ok) {
+        sendJson(response, result.http, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, version: result.version, requestId }, { 'X-Request-Id': requestId });
       return;
     }
 
     if (method === 'GET' && url.pathname.startsWith('/api/contracts/')) {
       const viewer = parseContractViewer(url);
       const id = url.pathname.replace('/api/contracts/', '');
-      const detail = app.contractService.detail(id, viewer.client, viewer.actorId, viewer.teamId);
-      sendJson(response, detail ? 200 : 404, detail ?? { error: 'Contract not found.', requestId }, { 'X-Request-Id': requestId });
+      const resolved = app.contractService.resolveDetail(id, viewer.client, viewer.actorId, viewer.teamId);
+      if (resolved.kind === 'not_found') {
+        sendJson(response, 404, { error: 'قرارداد یافت نشد', requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      if (resolved.kind === 'forbidden') {
+        sendJson(response, 403, { error: resolved.message, scenarioId: resolved.scenarioId, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, resolved.detail, { 'X-Request-Id': requestId });
       return;
     }
 
@@ -310,14 +425,93 @@ export async function requestListener(
       return;
     }
 
+    if (method === 'POST' && url.pathname === '/api/auth/request-otp') {
+      const body = await readJsonBody<{ mobile?: string }>(request);
+      const ip = clientIpFrom(request);
+      const result = app.authService.requestOtp(body?.mobile ?? '', { ip });
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(
+        response,
+        200,
+        { ok: true, expiresInSeconds: result.expiresInSeconds, devHint: result.devHint, requestId },
+        { 'X-Request-Id': requestId },
+      );
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/auth/verify-otp') {
+      const body = await readJsonBody<{ mobile?: string; code?: string }>(request);
+      const ip = clientIpFrom(request);
+      const result = app.authService.verifyOtp(body?.mobile ?? '', body?.code ?? '', { ip });
+      if (!result.ok) {
+        const code = result.code === 'OTP_EXPIRED' ? 400 : 401;
+        sendJson(response, code, { error: result.error, code: result.code, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(
+        response,
+        200,
+        {
+          token: result.tokens.accessToken,
+          refreshToken: result.tokens.refreshToken,
+          expiresIn: result.tokens.expiresIn,
+          user: result.user,
+          requestId,
+        },
+        { 'X-Request-Id': requestId },
+      );
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/auth/refresh') {
+      const body = await readJsonBody<{ refreshToken?: string }>(request);
+      const result = app.authService.refresh(body?.refreshToken ?? '');
+      if (!result.ok) {
+        sendJson(response, 401, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(
+        response,
+        200,
+        { token: result.tokens.accessToken, refreshToken: result.tokens.refreshToken, expiresIn: result.tokens.expiresIn, requestId },
+        { 'X-Request-Id': requestId },
+      );
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/auth/logout') {
+      const body = await readJsonBody<{ accessToken?: string; refreshToken?: string }>(request);
+      app.authService.logout(body?.accessToken, body?.refreshToken);
+      sendJson(response, 200, { ok: true, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/auth/register/national-id') {
+      const body = await readJsonBody<{ nationalId?: string }>(request);
+      const result = app.authService.registerNationalId(body?.nationalId ?? '');
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
     if (method === 'POST' && url.pathname === '/api/auth/login') {
       const body = await readJsonBody<{ mobile: string }>(request);
       if (!body?.mobile) {
         sendJson(response, 400, { error: 'mobile is required.', requestId }, { 'X-Request-Id': requestId });
         return;
       }
-
-      sendJson(response, 200, app.authRoutes.login(body.mobile), { 'X-Request-Id': requestId });
+      const v = validateIranMobile(body.mobile);
+      if (!v.ok) {
+        sendJson(response, 400, { error: v.error, requestId, code: 'AUTH-002' }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, app.authRoutes.login(v.mobile), { 'X-Request-Id': requestId });
       return;
     }
 
@@ -398,6 +592,122 @@ export async function requestListener(
       return;
     }
 
+    if (method === 'POST' && url.pathname === '/api/account/needs') {
+      const body = await readJsonBody<{ title?: string; city?: string; budget?: string }>(request);
+      const actorId = url.searchParams.get('actorId') ?? 'acct_1';
+      const result = app.needsService.create(body ?? {}, actorId);
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 201, result.need, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'PUT' && url.pathname.startsWith('/api/account/needs/')) {
+      const id = url.pathname.replace('/api/account/needs/', '');
+      const body = await readJsonBody<{ title?: string; city?: string; budget?: string }>(request);
+      const result = app.needsService.update(id, body ?? {});
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, result.need, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname.startsWith('/api/account/needs/') && url.pathname.endsWith('/close')) {
+      const id = url.pathname.replace('/api/account/needs/', '').replace('/close', '');
+      const result = app.needsService.close(id);
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, message: 'نیازمندی بسته شد', requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'DELETE' && url.pathname.startsWith('/api/account/needs/')) {
+      const id = url.pathname.replace('/api/account/needs/', '');
+      const result = app.needsService.deleteHard(id);
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, message: 'نیازمندی حذف شد', requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/advisor/clients') {
+      const advisorId = url.searchParams.get('advisorId') ?? 'adv_21';
+      sendJson(response, 200, { items: app.crmService.list(advisorId) }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/advisor/clients') {
+      const body = await readJsonBody<{ firstName?: string; lastName?: string; mobile?: string }>(request);
+      const advisorId = url.searchParams.get('advisorId') ?? 'adv_21';
+      const result = app.crmService.add(body ?? {}, advisorId);
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 201, result.client, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname.startsWith('/api/clients/') && url.pathname.endsWith('/full')) {
+      const id = url.pathname.replace('/api/clients/', '').replace('/full', '');
+      const profile = app.crmService.fullProfile(id);
+      if (!profile) {
+        sendJson(response, 404, { error: 'مشتری یافت نشد', requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, profile, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/advisor/commissions') {
+      const advisorId = url.searchParams.get('advisorId') ?? 'adv_21';
+      sendJson(response, 200, { items: app.commissionService.list(advisorId) }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname.match(/\/api\/advisor\/commissions\/[^/]+\/settle$/)) {
+      const id = url.pathname.replace('/api/advisor/commissions/', '').replace('/settle', '');
+      const advisorId = url.searchParams.get('advisorId') ?? 'adv_21';
+      const result = app.commissionService.requestSettlement(id, advisorId);
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, message: result.message, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname.match(/\/api\/ops\/commissions\/[^/]+\/approve$/)) {
+      const id = url.pathname.replace('/api/ops/commissions/', '').replace('/approve', '');
+      const result = app.commissionService.approve(id);
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname.match(/\/api\/ops\/commissions\/[^/]+\/reject$/)) {
+      const id = url.pathname.replace('/api/ops/commissions/', '').replace('/reject', '');
+      const body = await readJsonBody<{ reason?: string }>(request);
+      const result = app.commissionService.reject(id, body?.reason ?? '');
+      if (!result.ok) {
+        sendJson(response, 400, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
     if (method === 'GET' && url.pathname === '/api/account/bookmarks') {
       sendJson(response, 200, { items: app.accountService.bookmarks() }, { 'X-Request-Id': requestId });
       return;
@@ -443,9 +753,21 @@ export async function requestListener(
       return;
     }
 
+    if (method === 'GET' && url.pathname === '/api/admin/audit-log/export') {
+      const entityId = url.searchParams.get('entityId') ?? undefined;
+      const csv = app.adminService.auditLogExportCsv({ entityId });
+      sendText(response, 200, csv, 'text/csv; charset=utf-8', {
+        'Content-Disposition': 'attachment; filename="AuditLog_export.csv"',
+        'X-Request-Id': requestId,
+      });
+      return;
+    }
+
     if (method === 'GET' && url.pathname === '/api/admin/audit-log') {
       const entityId = url.searchParams.get('entityId') ?? undefined;
-      sendJson(response, 200, { items: app.adminService.auditLog(entityId) }, { 'X-Request-Id': requestId });
+      const actor = url.searchParams.get('actor') ?? undefined;
+      const action = url.searchParams.get('action') ?? undefined;
+      sendJson(response, 200, { items: app.adminService.auditLog({ entityId, actor, action }) }, { 'X-Request-Id': requestId });
       return;
     }
 

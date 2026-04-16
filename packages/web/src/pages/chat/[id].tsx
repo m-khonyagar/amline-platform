@@ -53,20 +53,32 @@ export default function ChatDetailPage() {
       activeNavHref="/chat"
       trustItems={['پاسخگویی شفاف', 'ذخیره تاریخچه گفتگو', 'پشتیبانی قابل رهگیری']}
     >
-      <section className="amline-chat-thread__listing">
-        <div className="amline-chat-thread__listing-meta">
-          <strong>{conversation.title}</strong>
-          <span>{conversation.subtitle}</span>
-        </div>
-        <div className="amline-chat-thread__listing-chip">{conversation.listingAge}</div>
-      </section>
+      {conversationId !== 'support' ? (
+        <section className="amline-chat-thread__listing" aria-label="خلاصه گفتگو">
+          <div className="amline-chat-thread__listing-meta">
+            <strong>{conversation.title}</strong>
+            <span>{conversation.subtitle}</span>
+          </div>
+          <div className="amline-chat-thread__listing-chip">{conversation.listingAge}</div>
+        </section>
+      ) : (
+        <section className="amline-chat-thread__listing amline-chat-thread__listing--compact" aria-label="نوع گفتگو">
+          <span className="amline-chat-thread__listing-meta amline-chat-thread__listing-meta--inline">
+            <strong>پشتیبانی املاین</strong>
+            <span>{conversation.title}</span>
+          </span>
+          <div className="amline-chat-thread__listing-chip">{conversation.listingAge}</div>
+        </section>
+      )}
 
       <section className="amline-chat-thread__panel">
         <div className="amline-chat-thread__participant">
-          <div className="amline-chat-thread__avatar">{conversation.subtitle.slice(0, 1)}</div>
+          <div className="amline-chat-thread__avatar">
+            {conversationId === 'support' ? 'پ' : conversation.subtitle.slice(0, 1)}
+          </div>
           <div>
-            <strong>کاربر املاین</strong>
-            <span>{conversation.subtitle}</span>
+            <strong>{conversationId === 'support' ? 'تیم پشتیبانی' : 'کاربر املاین'}</strong>
+            <span>{conversationId === 'support' ? 'پاسخ در ساعات اداری' : conversation.subtitle}</span>
           </div>
         </div>
 

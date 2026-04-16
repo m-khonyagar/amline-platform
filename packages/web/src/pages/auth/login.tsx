@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Icon } from '../../components/UI/Icon';
 import { useAuth } from '../../hooks/useAuth';
-import { loginWithMobile } from '../../services/api';
+import { requestAuthOtp, verifyAuthOtp } from '../../services/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,12 +11,16 @@ export default function LoginPage() {
   const [mobile, setMobile] = useState('09121234567');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
-  const [resendTimer, setResendTimer] = useState(90);
+  const [resendTimer, setResendTimer] = useState(120);
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
   const [mobileTouched, setMobileTouched] = useState(false);
+  const [otpDevHint, setOtpDevHint] = useState<string>('');
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const otpSubmitRef = useRef<string>('');
+  const verifyInFlight = useRef(false);
   const mobileIsValid = /^09\d{9}$/.test(mobile.trim());
   const otpCode = useMemo(() => otp.join(''), [otp]);
 
@@ -32,48 +36,86 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (step !== 'otp' || otpCode.length !== 6 || otp.some((digit) => digit === '')) {
-      return;
+      return undefined;
     }
+    if (otpSubmitRef.current === otpCode) {
+      return undefined;
+    }
+    otpSubmitRef.current = otpCode;
     void handleFinalizeLogin();
+    return undefined;
   }, [otp, otpCode, step]);
 
   async function handleSendCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMobileTouched(true);
     if (!mobileIsValid) {
-      setError('شماره موبایل را به‌صورت صحیح وارد کنید (مثال: 09121234567).');
+      setError('شماره موبایل باید ۱۱ رقم باشد');
       return;
     }
     setError('');
     setResult('');
-    setStep('otp');
-    setOtp(['', '', '', '', '', '']);
-    setResendTimer(90);
-    window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    setSendingCode(true);
+    setOtpDevHint('');
+    try {
+      const { expiresInSeconds, devHint } = await requestAuthOtp(mobile.trim());
+      setStep('otp');
+      setOtp(['', '', '', '', '', '']);
+      otpSubmitRef.current = '';
+      setResendTimer(expiresInSeconds);
+      setOtpDevHint(devHint ?? '');
+      window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : 'ارسال کد ناموفق بود.');
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  async function handleResendCode() {
+    if (!mobileIsValid || resendTimer > 0 || sendingCode) {
+      return;
+    }
+    setError('');
+    setSendingCode(true);
+    try {
+      const { expiresInSeconds, devHint } = await requestAuthOtp(mobile.trim());
+      setResendTimer(expiresInSeconds);
+      setOtpDevHint(devHint ?? '');
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : 'ارسال مجدد ناموفق بود.');
+    } finally {
+      setSendingCode(false);
+    }
   }
 
   async function handleFinalizeLogin() {
-    if (loading) {
+    if (loading || verifyInFlight.current) {
       return;
     }
+    verifyInFlight.current = true;
     setLoading(true);
     setError('');
     try {
-      const payload = await loginWithMobile(mobile);
+      const payload = await verifyAuthOtp(mobile.trim(), otpCode);
       login({
-        id: 'acct_1',
+        id: payload.user.id,
         fullName: 'آراد صالحی',
-        mobile,
+        mobile: payload.user.mobile,
         city: 'تهران',
         role: 'seller',
         membership: 'Amline Plus',
+        accessToken: payload.token,
+        refreshToken: payload.refreshToken,
       });
       setResult(`ورود با موفقیت انجام شد.`);
       void router.push(returnTo);
     } catch (reason: unknown) {
+      otpSubmitRef.current = '';
       setError(reason instanceof Error ? reason.message : 'ورود ناموفق بود.');
     } finally {
       setLoading(false);
+      verifyInFlight.current = false;
     }
   }
 
@@ -167,12 +209,12 @@ export default function LoginPage() {
                 />
               </label>
               {mobileTouched && !mobileIsValid ? (
-                <p className="amline-form-feedback amline-form-feedback--error">شماره موبایل معتبر نیست.</p>
+                <p className="amline-form-feedback amline-form-feedback--error">شماره موبایل باید ۱۱ رقم باشد</p>
               ) : (
                 <p className="amline-form-feedback">کد تایید فقط به همین شماره ارسال می‌شود.</p>
               )}
-              <button type="submit" className="amline-button amline-button--primary" disabled={!mobileIsValid}>
-                ارسال کد تایید
+              <button type="submit" className="amline-button amline-button--primary" disabled={!mobileIsValid || sendingCode}>
+                {sendingCode ? 'در حال ارسال...' : 'ارسال کد تایید'}
               </button>
             </form>
           ) : (
@@ -180,10 +222,22 @@ export default function LoginPage() {
               <div className="amline-auth-otp">
                 <div className="amline-auth-otp__header">
                   <strong>کد تایید ۶ رقمی</strong>
-                  <button type="button" className="amline-button amline-button--ghost" onClick={() => setStep('mobile')}>
+                  <button
+                    type="button"
+                    className="amline-button amline-button--ghost"
+                    onClick={() => {
+                      setStep('mobile');
+                      otpSubmitRef.current = '';
+                    }}
+                  >
                     ویرایش شماره
                   </button>
                 </div>
+                {otpDevHint ? (
+                  <p className="amline-form-feedback" dir="ltr">
+                    {otpDevHint}
+                  </p>
+                ) : null}
                 <div className="amline-auth-otp__inputs" onPaste={handleOtpPaste}>
                   {otp.map((digit, index) => (
                     <input
@@ -212,8 +266,8 @@ export default function LoginPage() {
                   <button
                     type="button"
                     className="amline-button amline-button--ghost"
-                    onClick={() => setResendTimer(90)}
-                    disabled={resendTimer > 0}
+                    onClick={() => void handleResendCode()}
+                    disabled={resendTimer > 0 || sendingCode}
                   >
                     {resendTimer > 0 ? `ارسال مجدد تا ${resendTimer} ثانیه` : 'ارسال مجدد کد'}
                   </button>

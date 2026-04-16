@@ -195,7 +195,9 @@ test('advisor cannot access people-only contract detail', async () => {
       `http://127.0.0.1:${address.port}/api/contracts/ct-1001?client=advisor&actorId=adv_21&teamId=team_north`,
     );
 
-    assert.equal(response.status, 404);
+    assert.equal(response.status, 403);
+    const body = (await response.json()) as { scenarioId?: string };
+    assert.equal(body.scenarioId, 'VIS-002');
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {

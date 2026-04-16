@@ -98,7 +98,7 @@ export default function ContractDetailPage() {
           <div className="amline-section-gap" />
 
           <SectionCard title="اقدامات در دسترس">
-            <div className="amline-panel-actions">
+            <div className="amline-panel-actions amline-panel-actions--balanced">
               {detail.actions.includes('track') ? (
                 <button type="button" className="amline-panel-action amline-panel-action--primary">
                   <strong>پیگیری وضعیت</strong>
@@ -106,13 +106,21 @@ export default function ContractDetailPage() {
                 </button>
               ) : null}
               {detail.actions.includes('chat_support') ? (
-                <button type="button" className="amline-panel-action" onClick={() => router.push('/chat/support')}>
+                <button
+                  type="button"
+                  className="amline-panel-action amline-panel-action--secondary"
+                  onClick={() => router.push('/chat/support')}
+                >
                   <strong>گفتگو با پشتیبانی</strong>
                   <span>اگر در مدارک یا روند امضا ابهام دارید با تیم پشتیبانی گفتگو کنید.</span>
                 </button>
               ) : null}
               {detail.actions.includes('submit_complaint') ? (
-                <button type="button" className="amline-panel-action" onClick={() => router.push('/support/complaints')}>
+                <button
+                  type="button"
+                  className="amline-panel-action amline-panel-action--secondary"
+                  onClick={() => router.push('/support/complaints')}
+                >
                   <strong>ثبت درخواست یا شکایت</strong>
                   <span>برای ثبت مورد رسمی و دریافت کد رهگیری از این مسیر استفاده کنید.</span>
                 </button>

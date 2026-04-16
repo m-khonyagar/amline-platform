@@ -22,10 +22,7 @@ const listings: AccountCollectionItem[] = [
   { id: 'listing-2', title: 'ویلا باغ ۴۵۰ متری', city: 'دماوند', status: 'در انتظار تایید' },
 ];
 
-const needs: AccountCollectionItem[] = [
-  { id: 'need-1', title: 'نیازمندی خرید آپارتمان ۲۵۰ متری', city: 'قم، نیروگاه', budget: 'تا ۴ میلیارد' },
-  { id: 'need-2', title: 'نیازمندی رهن و اجاره واحد ۱۲۰ متری', city: 'قم، سالاریه', budget: 'رهن کامل' },
-];
+import { needsService } from './needsService';
 
 const bookmarks: AccountCollectionItem[] = [
   { id: 'bookmark-1', title: 'آپارتمان خوش‌نقشه ۱۸۰ متری', city: 'قم، پردیسان' },
@@ -92,7 +89,7 @@ export const accountService = {
     return listings;
   },
   needs(): AccountCollectionItem[] {
-    return needs;
+    return needsService.list();
   },
   bookmarks(): AccountCollectionItem[] {
     return bookmarks;

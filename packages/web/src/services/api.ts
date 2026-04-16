@@ -137,6 +137,9 @@ export interface SessionUser {
   city: string;
   role: string;
   membership: string;
+  /** ذخیره‌شده برای درخواست‌های بعدی به API (در صورت نیاز به هدر Authorization) */
+  accessToken?: string;
+  refreshToken?: string;
 }
 
 export interface SupportComplaintPayload {
@@ -360,6 +363,68 @@ export async function submitComplaint(
   return (await response.json()) as SupportComplaintResult;
 }
 
+export async function requestAuthOtp(mobile: string): Promise<{ expiresInSeconds: number; devHint?: string }> {
+  const response = await fetch(`${api.baseUrl}/auth/request-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ mobile }),
+  });
+
+  const data = (await response.json()) as {
+    error?: string;
+    expiresInSeconds?: number;
+    devHint?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? 'ارسال کد ناموفق بود.');
+  }
+
+  return {
+    expiresInSeconds: data.expiresInSeconds ?? 120,
+    devHint: data.devHint,
+  };
+}
+
+export async function verifyAuthOtp(
+  mobile: string,
+  code: string,
+): Promise<{ token: string; refreshToken: string; expiresIn: number; user: { id: string; mobile: string } }> {
+  const response = await fetch(`${api.baseUrl}/auth/verify-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ mobile, code }),
+  });
+
+  const data = (await response.json()) as {
+    error?: string;
+    token?: string;
+    refreshToken?: string;
+    expiresIn?: number;
+    user?: { id: string; mobile: string };
+  };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? 'ورود ناموفق بود.');
+  }
+
+  if (!data.token || !data.user) {
+    throw new Error('پاسخ نامعتبر از سرور.');
+  }
+
+  return {
+    token: data.token,
+    refreshToken: data.refreshToken ?? '',
+    expiresIn: data.expiresIn ?? 3600,
+    user: data.user,
+  };
+}
+
+/** سازگاری با کلاینت‌های قدیمی؛ اعتبارسنجی شماره در سرور انجام می‌شود. */
 export async function loginWithMobile(mobile: string): Promise<{ token: string; expiresIn: number }> {
   const response = await fetch(`${api.baseUrl}/auth/login`, {
     method: 'POST',
@@ -369,11 +434,13 @@ export async function loginWithMobile(mobile: string): Promise<{ token: string; 
     body: JSON.stringify({ mobile }),
   });
 
+  const data = (await response.json()) as { error?: string; token?: string; expiresIn?: number };
+
   if (!response.ok) {
-    throw new Error('Login failed.');
+    throw new Error(data.error ?? 'Login failed.');
   }
 
-  return (await response.json()) as { token: string; expiresIn: number };
+  return { token: data.token ?? '', expiresIn: data.expiresIn ?? 3600 };
 }
 
 export async function requestPasswordReset(

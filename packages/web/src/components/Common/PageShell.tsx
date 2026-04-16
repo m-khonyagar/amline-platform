@@ -75,8 +75,8 @@ export function PageShell({
                       href={link.href}
                       className={`amline-sidebar__link${isActive ? ' amline-sidebar__link--active' : ''}`}
                     >
-                      <span>{link.label}</span>
-                      <span><Icon name="chevronLeft" className="amline-icon amline-icon--xs" /></span>
+                      <span className="amline-sidebar__link__label">{link.label}</span>
+                      <Icon name="chevronLeft" className="amline-icon amline-icon--xs amline-sidebar__link__icon" aria-hidden />
                     </Link>
                   );
                 })}
