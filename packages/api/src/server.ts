@@ -4,10 +4,14 @@ import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
 import { billingRoutes } from './routes/billing';
 import { hrRoutes } from './routes/hr';
+import { licenseRoutes } from './routes/licenses';
 import { paymentRoutes } from './routes/payments';
 import { propertyRoutes } from './routes/properties';
-import { licenseRoutes } from './routes/licenses';
+import { accountService } from './services/accountService';
 import { aiService } from './services/aiService';
+import { chatService } from './services/chatService';
+import { contractService } from './services/contractService';
+import { supportService } from './services/supportService';
 import { logger } from './utils/logger';
 
 type AppRouteMap = ReturnType<typeof createApp>;
@@ -15,7 +19,7 @@ type AppRouteMap = ReturnType<typeof createApp>;
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
   response.writeHead(statusCode, {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json; charset=utf-8',
   });
@@ -52,7 +56,11 @@ export function createApp() {
     achievementRoutes,
     hrRoutes,
     adminRoutes,
+    accountService,
     aiService,
+    chatService,
+    contractService,
+    supportService,
   };
 }
 
@@ -99,6 +107,18 @@ export async function requestListener(
 
     if (method === 'GET' && url.pathname === '/api/payments') {
       sendJson(response, 200, { items: app.paymentRoutes.history() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/contracts') {
+      sendJson(response, 200, { items: app.contractService.list() });
+      return;
+    }
+
+    if (method === 'DELETE' && url.pathname.startsWith('/api/contracts/')) {
+      const id = url.pathname.replace('/api/contracts/', '');
+      const removed = app.contractService.removeDraft(id);
+      sendJson(response, removed ? 200 : 404, removed ? { ok: true } : { error: 'Draft not found.' });
       return;
     }
 
@@ -152,6 +172,66 @@ export async function requestListener(
         mobile: '09121234567',
         city: 'تهران',
         membership: 'Amline Plus',
+      });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/account/listings') {
+      sendJson(response, 200, { items: app.accountService.listings() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/account/needs') {
+      sendJson(response, 200, { items: app.accountService.needs() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/account/bookmarks') {
+      sendJson(response, 200, { items: app.accountService.bookmarks() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/account/requests') {
+      sendJson(response, 200, { items: app.accountService.requests() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/chat/conversations') {
+      sendJson(response, 200, { items: app.chatService.list() });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname.startsWith('/api/chat/conversations/')) {
+      const id = url.pathname.replace('/api/chat/conversations/', '');
+      sendJson(response, 200, { items: app.chatService.messages(id) });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname.startsWith('/api/chat/conversations/') && url.pathname.endsWith('/messages')) {
+      const id = url.pathname.replace('/api/chat/conversations/', '').replace('/messages', '');
+      const body = await readJsonBody<{ text: string }>(request);
+      if (!body?.text?.trim()) {
+        sendJson(response, 400, { error: 'text is required.' });
+        return;
+      }
+
+      sendJson(response, 201, app.chatService.appendMessage(id, body.text.trim()));
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/support/complaints') {
+      const body = await readJsonBody<{ subject: string; description: string; category?: string }>(request);
+      if (!body?.subject?.trim() || !body.description?.trim()) {
+        sendJson(response, 400, { error: 'subject and description are required.' });
+        return;
+      }
+
+      const complaint = app.supportService.submit(body.subject.trim(), body.description.trim(), body.category?.trim() || 'general');
+      sendJson(response, 201, {
+        id: complaint.id,
+        status: complaint.status,
+        trackingCode: complaint.trackingCode,
+        message: `Complaint ${complaint.trackingCode} submitted successfully.`,
       });
       return;
     }

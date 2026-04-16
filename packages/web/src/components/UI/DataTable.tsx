@@ -8,32 +8,20 @@ export function DataTable({
   rows: ReactNode[][];
 }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="amline-table-wrap">
+      <table className="amline-table">
         <thead>
           <tr>
             {columns.map((column) => (
-              <th
-                key={column}
-                style={{
-                  textAlign: 'right',
-                  padding: '0.75rem',
-                  borderBottom: '1px solid #e2e8f0',
-                  color: '#475569',
-                }}
-              >
-                {column}
-              </th>
+              <th key={column}>{column}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} style={{ padding: '0.8rem', borderBottom: '1px solid #f1f5f9' }}>
-                  {cell}
-                </td>
+                <td key={cellIndex}>{cell}</td>
               ))}
             </tr>
           ))}

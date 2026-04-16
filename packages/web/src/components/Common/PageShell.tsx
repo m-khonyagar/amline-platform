@@ -1,6 +1,38 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Footer } from './Footer';
 import { Navbar } from './Navbar';
+
+const dashboardLinks = [
+  { href: '/admin/licenses', label: 'مدیریت مجوزها' },
+  { href: '/admin/achievements', label: 'افتخارات و رتبه‌بندی' },
+  { href: '/admin/jobs', label: 'فرصت‌های شغلی' },
+  { href: '/agent/dashboard', label: 'داشبورد مشاور' },
+  { href: '/account/profile', label: 'پروفایل کاربر' },
+  { href: '/account/invoices', label: 'فاکتورها' },
+  { href: '/contracts/new', label: 'انعقاد قرارداد' },
+];
+
+function getSectionLabel(pathname: string): string {
+  if (pathname.startsWith('/admin')) {
+    return 'پنل مدیریت';
+  }
+
+  if (pathname.startsWith('/agent')) {
+    return 'پنل مشاور';
+  }
+
+  if (pathname.startsWith('/account')) {
+    return 'ناحیه کاربری';
+  }
+
+  if (pathname.startsWith('/contracts')) {
+    return 'قراردادهای دیجیتال';
+  }
+
+  return 'پلتفرم عمومی';
+}
 
 export function PageShell({
   title,
@@ -11,23 +43,81 @@ export function PageShell({
   subtitle: string;
   children: ReactNode;
 }) {
+  const router = useRouter();
+  const isDashboard = /^\/(admin|agent|account|contracts)/.test(router.pathname);
+  const sectionLabel = getSectionLabel(router.pathname);
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="amline-shell">
       <Navbar />
-      <main style={{ flex: 1, maxWidth: '1100px', margin: '0 auto', width: '100%', padding: '2.5rem 1.25rem 3rem' }}>
-        <section
-          style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #fef3c7 100%)',
-            borderRadius: '28px',
-            padding: '1.75rem 2rem',
-            marginBottom: '1.5rem',
-            boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)',
-          }}
-        >
-          <h1 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '2rem' }}>{title}</h1>
-          <p style={{ margin: 0, color: '#334155', lineHeight: 1.8 }}>{subtitle}</p>
-        </section>
-        {children}
+      <main className="amline-main">
+        <div className={`amline-layout${isDashboard ? ' amline-layout--dashboard' : ''}`}>
+          {isDashboard ? (
+            <aside className="amline-sidebar">
+              <span className="amline-sidebar__badge">{sectionLabel}</span>
+              <h2 className="amline-sidebar__title">مسیرهای کلیدی املاین</h2>
+              <p className="amline-sidebar__text">
+                این ناحیه با الهام از فایل پنل مدیریت بازطراحی شده تا مسیرهای اجرایی، گزارش‌ها و عملیات روزانه
+                همیشه در دسترس باشند.
+              </p>
+
+              <nav className="amline-sidebar__nav" aria-label="Dashboard navigation">
+                {dashboardLinks.map((link) => {
+                  const isActive = router.pathname.startsWith(link.href);
+
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`amline-sidebar__link${isActive ? ' amline-sidebar__link--active' : ''}`}
+                    >
+                      <span>{link.label}</span>
+                      <span>←</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </aside>
+          ) : null}
+
+          <div className="amline-content">
+            <section className="amline-hero">
+              <div className="amline-hero__content">
+                <div>
+                  <span className="amline-hero__eyebrow">{sectionLabel}</span>
+                  <h1 className="amline-hero__title">{title}</h1>
+                  <p className="amline-hero__subtitle">{subtitle}</p>
+                  <div className="amline-hero__actions">
+                    <Link href="/contracts/new" className="amline-button amline-button--primary">
+                      شروع قرارداد جدید
+                    </Link>
+                    <Link href="/admin/licenses" className="amline-button amline-button--ghost">
+                      مشاهده مرکز عملیات
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="amline-hero__visual">
+                  <div className="amline-hero__panel">
+                    <img
+                      src={isDashboard ? '/assets/amline/contract-3.jpeg' : '/assets/amline/homeBanner.png'}
+                      alt="Amline visual"
+                    />
+                  </div>
+                  <div className="amline-floating-card">
+                    <strong>طراحی پیاده‌سازی‌شده از نمونه‌ی مرجع</strong>
+                    <div className="amline-footer__meta">
+                      رنگ‌ها، بافت کارت‌ها، visual hierarchy و فضای پنل از فایل‌های ضمیمه الهام گرفته شده‌اند.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div style={{ height: '1.5rem' }} />
+            {children}
+          </div>
+        </div>
       </main>
       <Footer />
     </div>

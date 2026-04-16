@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { PageShell } from '../../components/Common/PageShell';
 import { SectionCard } from '../../components/UI/SectionCard';
+import { requestPasswordReset } from '../../services/api';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -14,7 +15,8 @@ export default function ForgotPasswordPage() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            setMessage(`لینک بازیابی برای ${identity || 'کاربر'} ارسال شد.`);
+            void requestPasswordReset(identity || 'کاربر')
+              .then((payload) => setMessage(payload.message));
           }}
           style={{ display: 'grid', gap: '0.75rem', maxWidth: '420px' }}
         >

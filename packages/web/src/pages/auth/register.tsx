@@ -2,21 +2,32 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { PageShell } from '../../components/Common/PageShell';
 import { SectionCard } from '../../components/UI/SectionCard';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
   const [city, setCity] = useState('');
   const [message, setMessage] = useState('');
 
   return (
-    <PageShell title="ثبت نام" subtitle="فرم اولیه‌ی ثبت نام کاربر نهایی برای شروع استفاده از خدمات پلتفرم.">
+    <PageShell title="ثبت نام" subtitle="ساخت حساب کاربری اولیه برای شروع فلوهای قرارداد، گفتگو و پنل شخصی.">
       <SectionCard title="ایجاد حساب">
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            setMessage(`حساب ${fullName || 'کاربر جدید'} با شماره ${mobile || 'نامشخص'} برای شهر ${city || 'نامشخص'} آماده‌ی بررسی است.`);
+            register({
+              id: 'acct_local',
+              fullName: fullName || 'کاربر جدید',
+              mobile: mobile || '09120000000',
+              city: city || 'تهران',
+              role: 'buyer',
+              membership: 'Amline Starter',
+            });
+            setMessage(`حساب ${fullName || 'کاربر جدید'} ایجاد شد و می‌توانید وارد پنل شوید.`);
+            void router.push('/account/profile');
           }}
           style={{ display: 'grid', gap: '0.75rem', maxWidth: '480px' }}
         >

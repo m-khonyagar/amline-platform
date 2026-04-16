@@ -1,21 +1,33 @@
 import type { PropertySummary } from '../../services/api';
 import { formatPrice } from '../../utils/helpers';
 
+const propertyImages = [
+  '/assets/amline/slider-01.jpeg',
+  '/assets/amline/slider-02.jpeg',
+  '/assets/amline/slider-03.jpeg',
+];
+
 export function PropertyCard({ property }: { property: PropertySummary }) {
+  const image = propertyImages[property.title.length % propertyImages.length];
+
   return (
-    <article
-      style={{
-        border: '1px solid #dbe4e8',
-        borderRadius: '18px',
-        padding: '1rem',
-        backgroundColor: '#ffffff',
-        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.08)',
-      }}
-    >
-      <div style={{ fontSize: '0.85rem', color: '#0f766e', marginBottom: '0.35rem' }}>{property.city}</div>
-      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{property.title}</h3>
-      <p style={{ marginTop: '0.5rem', marginBottom: '0.35rem', color: '#64748b' }}>وضعیت: {property.status}</p>
-      <p style={{ marginBottom: 0, color: '#334155' }}>{formatPrice(property.price)} ریال</p>
+    <article className="amline-card amline-property-card">
+      <div className="amline-property-card__image">
+        <img src={image} alt={property.title} />
+        <span className="amline-property-card__badge">{property.city}</span>
+      </div>
+      <div className="amline-property-card__body">
+        <div className="amline-property-card__meta">
+          <span>فایل قابل معامله</span>
+          <span>{property.status}</span>
+        </div>
+        <h3 className="amline-property-card__title">{property.title}</h3>
+        <div className="amline-property-card__price">{formatPrice(property.price)} ریال</div>
+        <div className="amline-property-card__footer">
+          <span className="amline-pill">استعلام و قرارداد آنلاین</span>
+          <span className="amline-footer__meta">آماده بازدید</span>
+        </div>
+      </div>
     </article>
   );
 }
