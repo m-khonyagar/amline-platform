@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 import requests
+from datetime import datetime
 from .database import SessionLocal, engine, Base
-from .models import Contract
+from .models import Contract, ContractParty, ReviewQueue
 
 app = FastAPI(title='amline-contract-service')
 
@@ -29,37 +30,69 @@ def create_contract(payload: dict):
     db.add(contract)
     db.commit()
     db.refresh(contract)
+
+    parties = payload.get('parties', [])
+    for p in parties:
+        party = ContractParty(
+            contract_id=contract.id,
+            role=p.get('role'),
+            full_name=p.get('full_name'),
+            phone=p.get('phone'),
+        )
+        db.add(party)
+    db.commit()
+
     return {
         'id': contract.id,
         'status': contract.status
     }
 
-@app.post('/api/v1/contracts/{contract_id}/invite')
-def invite(contract_id: str, payload: dict):
-    res = requests.post(f"{SIGNATURE_URL}/api/v1/signatures/invite", json={
-        'contract_id': contract_id,
-        'role': payload.get('role'),
-        'phone': payload.get('phone')
-    })
-    return res.json()
-
 @app.post('/api/v1/contracts/{contract_id}/sign')
 def sign(contract_id: str, payload: dict):
+    db = SessionLocal()
+
     res = requests.post(f"{SIGNATURE_URL}/api/v1/signatures/verify", json={
         'contract_id': contract_id,
         'role': payload.get('role'),
         'otp': payload.get('otp')
     })
+
     data = res.json()
+
     if data.get('status') == 'signed':
-        db = SessionLocal()
+        party = db.query(ContractParty).filter(
+            ContractParty.contract_id == contract_id,
+            ContractParty.role == payload.get('role')
+        ).first()
+
+        if party and party.signature_status != 'signed':
+            party.signature_status = 'signed'
+            party.signed_at = datetime.utcnow()
+
+        parties = db.query(ContractParty).filter(ContractParty.contract_id == contract_id).all()
+        all_signed = all(p.signature_status == 'signed' for p in parties)
+
         contract = db.query(Contract).filter(Contract.id == contract_id).first()
+
         if contract:
-            contract.status = 'signed'
-            db.commit()
+            if all_signed:
+                contract.status = 'signed'
+
+                review = ReviewQueue(contract_id=contract_id)
+                db.add(review)
+            else:
+                contract.status = 'pending_signature'
+
+        db.commit()
+
     return data
 
-@app.get('/api/v1/contracts/{contract_id}/signature-status')
-def signature_status(contract_id: str):
-    res = requests.get(f"{SIGNATURE_URL}/api/v1/signatures/status/{contract_id}")
-    return res.json()
+@app.get('/api/v1/contracts/{contract_id}/review-status')
+def review_status(contract_id: str):
+    db = SessionLocal()
+    review = db.query(ReviewQueue).filter(ReviewQueue.contract_id == contract_id).first()
+    if not review:
+        return {'status': 'none'}
+    return {
+        'status': review.status
+    }
