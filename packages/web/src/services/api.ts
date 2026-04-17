@@ -1,5 +1,5 @@
 export const api = {
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api',
+  baseUrl: '/api',
 };
 
 export interface PropertySummary {
@@ -135,11 +135,13 @@ export interface SessionUser {
   fullName: string;
   mobile: string;
   city: string;
-  role: string;
+  role: 'seller' | 'advisor' | 'admin';
   membership: string;
   /** ذخیره‌شده برای درخواست‌های بعدی به API (در صورت نیاز به هدر Authorization) */
   accessToken?: string;
   refreshToken?: string;
+  actorId?: string;
+  teamId?: string;
 }
 
 export interface SupportComplaintPayload {
@@ -422,6 +424,45 @@ export async function verifyAuthOtp(
     expiresIn: data.expiresIn ?? 3600,
     user: data.user,
   };
+}
+
+export async function refreshAuthSession(
+  refreshToken: string,
+): Promise<{ token: string; refreshToken: string; expiresIn: number }> {
+  const response = await fetch(`${api.baseUrl}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const data = (await response.json()) as {
+    error?: string;
+    token?: string;
+    refreshToken?: string;
+    expiresIn?: number;
+  };
+
+  if (!response.ok || !data.token) {
+    throw new Error(data.error ?? 'تمدید نشست ناموفق بود.');
+  }
+
+  return {
+    token: data.token,
+    refreshToken: data.refreshToken ?? refreshToken,
+    expiresIn: data.expiresIn ?? 3600,
+  };
+}
+
+export async function logoutSession(accessToken?: string, refreshToken?: string): Promise<void> {
+  await fetch(`${api.baseUrl}/auth/logout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ accessToken, refreshToken }),
+  });
 }
 
 /** سازگاری با کلاینت‌های قدیمی؛ اعتبارسنجی شماره در سرور انجام می‌شود. */

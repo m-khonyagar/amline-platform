@@ -1,5 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import { readJsonState, writeJsonState } from '../utils/stateStore';
 
 export type ConversationRecord = {
   id: string;
@@ -86,36 +85,21 @@ type ChatStore = {
   conversations: Record<string, Pick<ConversationRecord, 'preview' | 'timeLabel' | 'unread' | 'pinned'>>;
 };
 
-const storePath = path.resolve(
-  process.env.AMLINE_CHAT_STORE_PATH?.trim() || path.join(process.cwd(), 'database', 'amline-chat-store.json'),
-);
-
 function readStore(): ChatStore | null {
-  try {
-    if (!fs.existsSync(storePath)) {
-      return null;
-    }
-
-    const raw = fs.readFileSync(storePath, 'utf8');
-    if (!raw.trim()) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<ChatStore>;
-    if (parsed.version !== 1 || typeof parsed.messages !== 'object' || typeof parsed.conversations !== 'object') {
-      return null;
-    }
-
-    return parsed as ChatStore;
-  } catch {
+  const parsed = readJsonState<Partial<ChatStore> | null>('amline-chat-store.json', null);
+  if (!parsed) {
     return null;
   }
+
+  if (parsed.version !== 1 || typeof parsed.messages !== 'object' || typeof parsed.conversations !== 'object') {
+    return null;
+  }
+
+  return parsed as ChatStore;
 }
 
 function writeStore(store: ChatStore): void {
-  const dir = path.dirname(storePath);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(storePath, `${JSON.stringify(store, null, 2)}\n`, 'utf8');
+  writeJsonState('amline-chat-store.json', store);
 }
 
 function getConversationDefaults(): Record<string, ConversationRecord> {

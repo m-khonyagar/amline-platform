@@ -20,9 +20,22 @@ const tabConfig: Array<{ key: ContractTab; label: string }> = [
 export default function ContractsIndexPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const contractClient = user?.role === 'admin' ? 'ops' : user?.role === 'advisor' ? 'advisor' : 'people';
+  const pageTitle = user?.role === 'admin' ? 'قراردادهای عملیاتی' : user?.role === 'advisor' ? 'قراردادهای تیم' : 'قراردادهای من';
+  const pageSubtitle =
+    user?.role === 'admin'
+      ? 'پرونده‌ها را از دید عملیات، سطح دسترسی و وضعیت بررسی مدیریت کنید.'
+      : user?.role === 'advisor'
+        ? 'قراردادهای تیم فروش را بر اساس اولویت، اقدام بعدی و وضعیت پیگیری دنبال کنید.'
+        : 'قراردادها را بر اساس وضعیت، اقدام بعدی و میزان فوریت پیگیری کنید.';
   const contractsQuery = useAsyncData(
-    () => fetchContracts({ client: 'people', actorId: user?.id ?? 'acct_1', teamId: 'team_north' }),
-    [user?.id],
+    () =>
+      fetchContracts({
+        client: contractClient,
+        actorId: user?.actorId ?? user?.id ?? (contractClient === 'ops' ? 'ops_1' : contractClient === 'advisor' ? 'adv_21' : 'acct_1'),
+        teamId: user?.teamId ?? (contractClient === 'ops' ? 'ops_central' : 'team_north'),
+      }),
+    [contractClient, user?.actorId, user?.id, user?.teamId],
   );
   const [contracts, setContracts] = useState<ContractItem[]>([]);
   const [activeTab, setActiveTab] = useState<ContractTab>('active');
@@ -64,8 +77,8 @@ export default function ContractsIndexPage() {
 
   return (
     <AppShellLayout
-      title="قراردادهای من"
-      subtitle="قراردادها را بر اساس وضعیت، اقدام بعدی و میزان فوریت پیگیری کنید."
+      title={pageTitle}
+      subtitle={pageSubtitle}
       activeNavHref="/contracts"
       topbarAction={
         <button type="button" className="amline-button amline-button--primary" onClick={() => router.push('/contracts/new')}>

@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useAuth } from '../../hooks/useAuth';
 import { publicNavItems } from '../../config/navigation';
+import { useAuth } from '../../hooks/useAuth';
+import { defaultRouteForRole } from '../../lib/auth';
 
 export function Navbar() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const accountHref = isAuthenticated ? defaultRouteForRole(user?.role) : '/auth/login';
+  const accountLabel = user?.role === 'admin' ? 'پنل ادمین' : user?.role === 'advisor' ? 'پنل مشاور' : 'حساب من';
 
   return (
     <header className="amline-topbar">
@@ -20,9 +23,7 @@ export function Navbar() {
 
         <nav className="amline-nav" aria-label="Main navigation">
           {publicNavItems.map((item) => {
-            const isActive = item.href === '/'
-              ? router.pathname === item.href
-              : router.pathname.startsWith(item.href);
+            const isActive = item.href === '/' ? router.pathname === item.href : router.pathname.startsWith(item.href);
 
             return (
               <Link
@@ -36,8 +37,8 @@ export function Navbar() {
             );
           })}
 
-          <Link href={isAuthenticated ? '/account/profile' : '/auth/login'} className="amline-nav__cta">
-            {isAuthenticated ? 'ورود به حساب' : 'شروع با موبایل'}
+          <Link href={accountHref} className="amline-nav__cta">
+            {isAuthenticated ? accountLabel : 'شروع با موبایل'}
           </Link>
         </nav>
       </div>

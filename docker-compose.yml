@@ -10,6 +10,7 @@ services:
       REDIS_URL: redis://redis:6379
       MAX_IN_FLIGHT_REQUESTS: 5000
       READY_IN_FLIGHT_THRESHOLD: 4500
+      AMLINE_STATE_STORE_DIR: /app/database
     ports:
       - "8080:8080"
     healthcheck:
@@ -26,7 +27,7 @@ services:
     build: ./packages/web
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api
+      INTERNAL_API_BASE_URL: http://api:8080/api
     ports:
       - "3000:3000"
     healthcheck:

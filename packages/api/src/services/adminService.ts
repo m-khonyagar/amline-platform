@@ -1,6 +1,7 @@
 import { contractService, type ClientContext } from './contractService';
 import { paymentService } from './paymentService';
 import { propertyService } from './propertyService';
+import { readJsonState, writeJsonState } from '../utils/stateStore';
 
 export type ReviewQueueItem = {
   id: string;
@@ -32,52 +33,66 @@ export type AuditLogItem = {
 };
 
 type FunnelScope = 'marketplace' | 'operations';
+type AdminState = {
+  version: 1;
+  reviewQueue: ReviewQueueItem[];
+  fraudCases: FraudCaseItem[];
+  auditLog: AuditLogItem[];
+};
 
-const reviewQueue: ReviewQueueItem[] = [
-  { id: 'rv-101', contractId: 'ct-1005', priority: 'high', state: 'sla_breached', assignee: 'Legal Operator 12', slaHoursLeft: -2 },
-  { id: 'rv-102', contractId: 'ct-1006', priority: 'normal', state: 'assigned_to_me', assignee: 'Legal Operator 8', slaHoursLeft: 6 },
-  { id: 'rv-103', contractId: 'ct-1003', priority: 'high', state: 'escalated', assignee: 'Review Supervisor', slaHoursLeft: 1 },
-  { id: 'rv-104', contractId: 'ct-1004', priority: 'low', state: 'unassigned', assignee: 'Unassigned', slaHoursLeft: 22 },
-];
+const stateFile = 'amline-admin-store.json';
+const defaultState: AdminState = {
+  version: 1,
+  reviewQueue: [
+    { id: 'rv-101', contractId: 'ct-1005', priority: 'high', state: 'sla_breached', assignee: 'Legal Operator 12', slaHoursLeft: -2 },
+    { id: 'rv-102', contractId: 'ct-1006', priority: 'normal', state: 'assigned_to_me', assignee: 'Legal Operator 8', slaHoursLeft: 6 },
+    { id: 'rv-103', contractId: 'ct-1003', priority: 'high', state: 'escalated', assignee: 'Review Supervisor', slaHoursLeft: 1 },
+    { id: 'rv-104', contractId: 'ct-1004', priority: 'low', state: 'unassigned', assignee: 'Unassigned', slaHoursLeft: 22 },
+  ],
+  fraudCases: [
+    { id: 'fr-1', entityType: 'payment', entityId: 'txn_1', riskScore: 92, reason: 'Payment fingerprint changed during checkout.', status: 'open' },
+    { id: 'fr-2', entityType: 'contract', entityId: 'ct-1003', riskScore: 81, reason: 'Signature pattern mismatch detected.', status: 'monitor' },
+    { id: 'fr-3', entityType: 'user', entityId: 'usr-221', riskScore: 97, reason: 'Identity mismatch between invite and profile.', status: 'blocked' },
+  ],
+  auditLog: [
+    {
+      id: 'audit-101',
+      entityType: 'contract',
+      entityId: 'ct-1005',
+      action: 'entered_legal_review',
+      actor: 'system',
+      channel: 'system',
+      createdAt: '1404/10/19 11:20',
+      note: 'Contract entered the legal review queue after signatures were collected.',
+    },
+    {
+      id: 'audit-102',
+      entityType: 'review_case',
+      entityId: 'rv-103',
+      action: 'escalated_to_supervisor',
+      actor: 'ops.supervisor',
+      channel: 'ops',
+      createdAt: '1404/10/19 13:05',
+      note: 'Escalated because the review case was close to breaching SLA.',
+    },
+    {
+      id: 'audit-103',
+      entityType: 'fraud_case',
+      entityId: 'fr-2',
+      action: 'risk_monitoring_enabled',
+      actor: 'ops.risk',
+      channel: 'ops',
+      createdAt: '1404/10/19 14:10',
+      note: 'Risk monitoring stayed active after a signature anomaly was detected.',
+    },
+  ],
+};
 
-const fraudCases: FraudCaseItem[] = [
-  { id: 'fr-1', entityType: 'payment', entityId: 'txn_1', riskScore: 92, reason: 'Payment fingerprint changed during checkout.', status: 'open' },
-  { id: 'fr-2', entityType: 'contract', entityId: 'ct-1003', riskScore: 81, reason: 'Signature pattern mismatch detected.', status: 'monitor' },
-  { id: 'fr-3', entityType: 'user', entityId: 'usr-221', riskScore: 97, reason: 'Identity mismatch between invite and profile.', status: 'blocked' },
-];
+const state = readJsonState<AdminState>(stateFile, defaultState);
 
-const auditLog: AuditLogItem[] = [
-  {
-    id: 'audit-101',
-    entityType: 'contract',
-    entityId: 'ct-1005',
-    action: 'entered_legal_review',
-    actor: 'system',
-    channel: 'system',
-    createdAt: '1404/10/19 11:20',
-    note: 'Contract entered the legal review queue after signatures were collected.',
-  },
-  {
-    id: 'audit-102',
-    entityType: 'review_case',
-    entityId: 'rv-103',
-    action: 'escalated_to_supervisor',
-    actor: 'ops.supervisor',
-    channel: 'ops',
-    createdAt: '1404/10/19 13:05',
-    note: 'Escalated because the review case was close to breaching SLA.',
-  },
-  {
-    id: 'audit-103',
-    entityType: 'fraud_case',
-    entityId: 'fr-2',
-    action: 'risk_monitoring_enabled',
-    actor: 'ops.risk',
-    channel: 'ops',
-    createdAt: '1404/10/19 14:10',
-    note: 'Risk monitoring stayed active after a signature anomaly was detected.',
-  },
-];
+function persist(): void {
+  writeJsonState(stateFile, state);
+}
 
 function timestamp(): string {
   return new Intl.DateTimeFormat('fa-IR', {
@@ -98,7 +113,7 @@ export function recordAudit(
   actor = 'ops.agent',
   channel: AuditLogItem['channel'] = 'ops',
 ): void {
-  auditLog.unshift({
+  state.auditLog.unshift({
     id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     entityType,
     entityId,
@@ -108,60 +123,63 @@ export function recordAudit(
     createdAt: timestamp(),
     note,
   });
+  persist();
 }
 
 export const adminService = {
   reviewQueue(): ReviewQueueItem[] {
-    return reviewQueue;
+    return state.reviewQueue;
   },
   assignReviewCase(id: string): boolean {
-    const item = reviewQueue.find((entry) => entry.id === id);
+    const item = state.reviewQueue.find((entry) => entry.id === id);
     if (!item) return false;
     item.state = 'assigned_to_me';
     item.assignee = 'Current operator';
     recordAudit('review_case', item.id, 'assigned_to_me', `Review case ${item.id} assigned to the active operator.`);
+    persist();
     return true;
   },
   escalateReviewCase(id: string): boolean {
-    const item = reviewQueue.find((entry) => entry.id === id);
+    const item = state.reviewQueue.find((entry) => entry.id === id);
     if (!item) return false;
     item.state = 'escalated';
     item.assignee = 'Review Supervisor';
     recordAudit('review_case', item.id, 'escalated', `Review case ${item.id} escalated to supervisor.`);
+    persist();
     return true;
   },
   fraudCases(): FraudCaseItem[] {
-    return fraudCases;
+    return state.fraudCases;
   },
   decideFraudCase(id: string, decision: 'allow' | 'monitor' | 'block'): boolean {
-    const item = fraudCases.find((entry) => entry.id === id);
+    const item = state.fraudCases.find((entry) => entry.id === id);
     if (!item) return false;
     item.status = decision === 'allow' ? 'resolved' : decision === 'block' ? 'blocked' : 'monitor';
     recordAudit('fraud_case', item.id, `decision_${decision}`, `Fraud case ${item.id} moved to ${item.status}.`, 'ops.risk', 'ops');
+    persist();
     return true;
   },
   auditLog(filters?: { entityId?: string; actor?: string; action?: string }): AuditLogItem[] {
-    let rows = auditLog;
+    let rows = state.auditLog;
     if (filters?.entityId) {
       const id = filters.entityId.toLowerCase();
       rows = rows.filter((item) => item.entityId.toLowerCase() === id);
     }
     if (filters?.actor) {
-      const a = filters.actor.toLowerCase();
-      rows = rows.filter((item) => item.actor.toLowerCase().includes(a));
+      const actor = filters.actor.toLowerCase();
+      rows = rows.filter((item) => item.actor.toLowerCase().includes(actor));
     }
     if (filters?.action) {
-      const ac = filters.action.toLowerCase();
-      rows = rows.filter((item) => item.action.toLowerCase().includes(ac));
+      const action = filters.action.toLowerCase();
+      rows = rows.filter((item) => item.action.toLowerCase().includes(action));
     }
     return rows;
   },
-
   auditLogExportCsv(filters?: { entityId?: string }): string {
     const rows = this.auditLog(filters);
     const header = 'زمان,موجودیت,شناسه,عملیات,عامل,توضیح';
-    const lines = rows.map((r) =>
-      [r.createdAt, r.entityType, r.entityId, r.action, r.actor, `"${r.note.replace(/"/g, '""')}"`].join(','),
+    const lines = rows.map((row) =>
+      [row.createdAt, row.entityType, row.entityId, row.action, row.actor, `"${row.note.replace(/"/g, '""')}"`].join(','),
     );
     return [header, ...lines].join('\n');
   },

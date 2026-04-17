@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import { accountNavItems } from '../../config/navigation';
+import { useAuth } from '../../hooks/useAuth';
 import { Icon } from '../UI/Icon';
 import { TrustPanel } from '../UI/TrustPanel';
 
@@ -20,6 +21,23 @@ export function AppShellLayout({
   trustItems?: string[];
 }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const bottomNavItems =
+    user?.role === 'admin'
+      ? [
+          { href: '/admin', label: 'ادمین', icon: 'home' as const },
+          { href: '/admin/review-queue', label: 'بررسی', icon: 'contracts' as const },
+          { href: '/admin/fraud-desk', label: 'تقلب', icon: 'support' as const },
+          { href: '/account/profile', label: 'حساب', icon: 'account' as const },
+        ]
+      : user?.role === 'advisor'
+        ? [
+            { href: '/agent/dashboard', label: 'داشبورد', icon: 'home' as const },
+            { href: '/contracts', label: 'قراردادها', icon: 'contracts' as const },
+            { href: '/chat', label: 'گفتگو', icon: 'chat' as const },
+            { href: '/account/profile', label: 'حساب', icon: 'account' as const },
+          ]
+        : accountNavItems;
 
   return (
     <div className="amline-app-shell">
@@ -44,7 +62,7 @@ export function AppShellLayout({
       </main>
 
       <nav className="amline-contracts-bottom-nav" aria-label="پیمایش اصلی">
-        {accountNavItems.map((item) => (
+        {bottomNavItems.map((item) => (
           <button
             key={item.href}
             type="button"

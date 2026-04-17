@@ -14,9 +14,15 @@ export default function ContractDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const contractId = typeof router.query.id === 'string' ? router.query.id : '';
+  const contractClient = user?.role === 'admin' ? 'ops' : user?.role === 'advisor' ? 'advisor' : 'people';
   const detailQuery = useAsyncData(
-    () => fetchContractDetail(contractId, { client: 'people', actorId: user?.id ?? 'acct_1', teamId: 'team_north' }),
-    [contractId, user?.id],
+    () =>
+      fetchContractDetail(contractId, {
+        client: contractClient,
+        actorId: user?.actorId ?? user?.id ?? (contractClient === 'ops' ? 'ops_1' : contractClient === 'advisor' ? 'adv_21' : 'acct_1'),
+        teamId: user?.teamId ?? (contractClient === 'ops' ? 'ops_central' : 'team_north'),
+      }),
+    [contractClient, contractId, user?.actorId, user?.id, user?.teamId],
   );
   const detail = detailQuery.data ?? null;
   const contract = detail?.contract ?? null;

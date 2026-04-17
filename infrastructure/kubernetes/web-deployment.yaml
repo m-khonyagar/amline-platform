@@ -37,8 +37,8 @@ spec:
               value: "3000"
             - name: HOSTNAME
               value: "0.0.0.0"
-            - name: NEXT_PUBLIC_API_BASE_URL
-              value: "https://api.amline.ir/api"
+            - name: INTERNAL_API_BASE_URL
+              value: "http://amline-api:8080/api"
           resources:
             requests:
               cpu: "250m"

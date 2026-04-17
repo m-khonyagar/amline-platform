@@ -2,35 +2,45 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Icon } from '../../components/UI/Icon';
 import { useAuth } from '../../hooks/useAuth';
+import { defaultRouteForRole, personaProfile, type AppRole } from '../../lib/auth';
 import { requestAuthOtp, verifyAuthOtp } from '../../services/api';
+
+const personas: Array<{ value: AppRole; label: string; description: string }> = [
+  { value: 'seller', label: 'کاربر عادی', description: 'قراردادها، حساب کاربری و پشتیبانی شخصی.' },
+  { value: 'advisor', label: 'مشاور املاک', description: 'داشبورد تیم، پیگیری مشتری و عملیات فروش.' },
+  { value: 'admin', label: 'ادمین عملیات', description: 'صف بررسی، نظارت، تقلب و گزارش‌های مدیریتی.' },
+];
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const returnTo = typeof router.query.returnTo === 'string' ? router.query.returnTo : '/account/profile';
+  const [persona, setPersona] = useState<AppRole>('seller');
   const [mobile, setMobile] = useState('09121234567');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
   const [resendTimer, setResendTimer] = useState(120);
-  const [result, setResult] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [mobileTouched, setMobileTouched] = useState(false);
-  const [otpDevHint, setOtpDevHint] = useState<string>('');
+  const [otpDevHint, setOtpDevHint] = useState('');
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const otpSubmitRef = useRef<string>('');
+  const otpSubmitRef = useRef('');
   const verifyInFlight = useRef(false);
   const mobileIsValid = /^09\d{9}$/.test(mobile.trim());
   const otpCode = useMemo(() => otp.join(''), [otp]);
+  const returnTo = typeof router.query.returnTo === 'string' ? router.query.returnTo : defaultRouteForRole(persona);
 
   useEffect(() => {
     if (step !== 'otp' || resendTimer <= 0) {
       return undefined;
     }
+
     const timer = window.setInterval(() => {
       setResendTimer((value) => (value > 0 ? value - 1 : 0));
     }, 1000);
+
     return () => window.clearInterval(timer);
   }, [resendTimer, step]);
 
@@ -38,9 +48,11 @@ export default function LoginPage() {
     if (step !== 'otp' || otpCode.length !== 6 || otp.some((digit) => digit === '')) {
       return undefined;
     }
+
     if (otpSubmitRef.current === otpCode) {
       return undefined;
     }
+
     otpSubmitRef.current = otpCode;
     void handleFinalizeLogin();
     return undefined;
@@ -50,13 +62,15 @@ export default function LoginPage() {
     event.preventDefault();
     setMobileTouched(true);
     if (!mobileIsValid) {
-      setError('شماره موبایل باید ۱۱ رقم باشد');
+      setError('شماره موبایل باید ۱۱ رقم باشد.');
       return;
     }
+
     setError('');
     setResult('');
     setSendingCode(true);
     setOtpDevHint('');
+
     try {
       const { expiresInSeconds, devHint } = await requestAuthOtp(mobile.trim());
       setStep('otp');
@@ -76,8 +90,10 @@ export default function LoginPage() {
     if (!mobileIsValid || resendTimer > 0 || sendingCode) {
       return;
     }
+
     setError('');
     setSendingCode(true);
+
     try {
       const { expiresInSeconds, devHint } = await requestAuthOtp(mobile.trim());
       setResendTimer(expiresInSeconds);
@@ -93,22 +109,20 @@ export default function LoginPage() {
     if (loading || verifyInFlight.current) {
       return;
     }
+
     verifyInFlight.current = true;
     setLoading(true);
     setError('');
+
     try {
       const payload = await verifyAuthOtp(mobile.trim(), otpCode);
-      login({
-        id: payload.user.id,
-        fullName: 'آراد صالحی',
-        mobile: payload.user.mobile,
-        city: 'تهران',
-        role: 'seller',
-        membership: 'Amline Plus',
-        accessToken: payload.token,
-        refreshToken: payload.refreshToken,
-      });
-      setResult(`ورود با موفقیت انجام شد.`);
+      login(
+        personaProfile(persona, payload.user.mobile, {
+          accessToken: payload.token,
+          refreshToken: payload.refreshToken,
+        }),
+      );
+      setResult('ورود با موفقیت انجام شد.');
       void router.push(returnTo);
     } catch (reason: unknown) {
       otpSubmitRef.current = '';
@@ -126,6 +140,7 @@ export default function LoginPage() {
       clone[index] = next;
       return clone;
     });
+
     if (next && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
@@ -135,9 +150,11 @@ export default function LoginPage() {
     if (event.key === 'Backspace' && !otp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
+
     if (event.key === 'ArrowLeft' && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
+
     if (event.key === 'ArrowRight' && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
@@ -148,9 +165,10 @@ export default function LoginPage() {
     if (!pasted) {
       return;
     }
+
     event.preventDefault();
     const filled = pasted.split('');
-    const nextOtp = Array.from({ length: 6 }, (_, i) => filled[i] ?? '');
+    const nextOtp = Array.from({ length: 6 }, (_, index) => filled[index] ?? '');
     setOtp(nextOtp);
     const focusIndex = Math.min(pasted.length, 5);
     otpRefs.current[focusIndex]?.focus();
@@ -161,10 +179,10 @@ export default function LoginPage() {
       <section className="amline-auth-shell">
         <aside className="amline-auth-story">
           <span className="amline-auth-story__eyebrow">ورود امن به هاب عملیات املاین</span>
-          <h1>ورود به چرخه قرارداد دیجیتال، سریع‌تر از همیشه</h1>
+          <h1>ورود نقش‌محور برای کاربر، مشاور و ادمین</h1>
           <p>
-            املاین برای معاملات حقوقی و مالی حساس طراحی شده است؛ با یک ورود ساده، کل عملیات قرارداد، رهگیری رسمی و پرداخت را
-            یکپارچه مدیریت کنید.
+            املاین برای سه تجربه‌ی واقعی طراحی شده است: استفاده‌ی روزمره‌ی کاربر، عملیات فروش و پیگیری برای مشاور، و کنترل
+            کیفیت و عملیات برای ادمین. با یک ورود امن، هر نقش به مسیر کاری مناسب خودش هدایت می‌شود.
           </p>
           <div className="amline-auth-story__metrics">
             <article>
@@ -181,9 +199,9 @@ export default function LoginPage() {
             </article>
           </div>
           <div className="amline-auth-story__benefits">
-            <span><Icon name="check" className="amline-icon amline-icon--xs" /> مدیریت قراردادهای ملکی</span>
-            <span><Icon name="check" className="amline-icon amline-icon--xs" /> پیگیری پرداخت و کد رهگیری</span>
-            <span><Icon name="check" className="amline-icon amline-icon--xs" /> امضای دیجیتال و تایید هویت</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> مسیر اختصاصی برای هر نقش</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> رهگیری قرارداد و عملیات در یک هاب</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> ورود امن با OTP و نشست پایدار</span>
           </div>
         </aside>
 
@@ -191,11 +209,25 @@ export default function LoginPage() {
           <header className="amline-auth-card__header">
             <span className="amline-auth-card__badge">ورود امن</span>
             <h2>ورود به حساب املاین</h2>
-            <p>برای ادامه قراردادها و عملیات خود وارد شوید.</p>
+            <p>نوع حساب را انتخاب کنید و با شماره موبایل خود وارد شوید.</p>
           </header>
 
           {step === 'mobile' ? (
             <form className="amline-form-stack" onSubmit={handleSendCode}>
+              <div className="amline-persona-switch" role="radiogroup" aria-label="نوع حساب">
+                {personas.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={`amline-persona-switch__item${persona === item.value ? ' is-active' : ''}`}
+                    onClick={() => setPersona(item.value)}
+                  >
+                    <strong>{item.label}</strong>
+                    <span>{item.description}</span>
+                  </button>
+                ))}
+              </div>
+
               <label className="amline-field">
                 <span>شماره موبایل</span>
                 <input
@@ -208,11 +240,16 @@ export default function LoginPage() {
                   dir="ltr"
                 />
               </label>
+
               {mobileTouched && !mobileIsValid ? (
-                <p className="amline-form-feedback amline-form-feedback--error">شماره موبایل باید ۱۱ رقم باشد</p>
+                <p className="amline-form-feedback amline-form-feedback--error">شماره موبایل باید ۱۱ رقم باشد.</p>
               ) : (
-                <p className="amline-form-feedback">کد تایید فقط به همین شماره ارسال می‌شود.</p>
+                <p className="amline-form-feedback">
+                  پس از تایید کد، به مسیر مخصوص <strong>{personas.find((item) => item.value === persona)?.label}</strong> هدایت
+                  می‌شوید.
+                </p>
               )}
+
               <button type="submit" className="amline-button amline-button--primary" disabled={!mobileIsValid || sendingCode}>
                 {sendingCode ? 'در حال ارسال...' : 'ارسال کد تایید'}
               </button>
@@ -233,11 +270,13 @@ export default function LoginPage() {
                     ویرایش شماره
                   </button>
                 </div>
+
                 {otpDevHint ? (
                   <p className="amline-form-feedback" dir="ltr">
                     {otpDevHint}
                   </p>
                 ) : null}
+
                 <div className="amline-auth-otp__inputs" onPaste={handleOtpPaste}>
                   {otp.map((digit, index) => (
                     <input
@@ -254,6 +293,7 @@ export default function LoginPage() {
                     />
                   ))}
                 </div>
+
                 <div className="amline-auth-otp__actions">
                   <button
                     type="button"
@@ -278,11 +318,11 @@ export default function LoginPage() {
 
           <div className="amline-auth-trust">
             <span><Icon name="check" className="amline-icon amline-icon--xs" /> ورود امن و رمزنگاری‌شده</span>
-            <span><Icon name="check" className="amline-icon amline-icon--xs" /> کد تایید فقط به شماره شما ارسال می‌شود</span>
-            <span><Icon name="check" className="amline-icon amline-icon--xs" /> اطلاعات شما مطابق سیاست حریم خصوصی محفوظ است</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> نشست پایدار برای ادامه‌ی عملیات</span>
+            <span><Icon name="check" className="amline-icon amline-icon--xs" /> هدایت خودکار به پنل مناسب نقش</span>
           </div>
 
-          <p className="amline-form-feedback">اگر حساب نداشته باشید پس از تایید شماره ایجاد خواهد شد.</p>
+          <p className="amline-form-feedback">اگر حسابی نداشته باشید، پس از تایید شماره ساخته می‌شود.</p>
           {result ? <p className="amline-form-feedback amline-form-feedback--success">{result}</p> : null}
           {error ? <p className="amline-form-feedback amline-form-feedback--error">{error}</p> : null}
         </section>

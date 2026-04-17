@@ -51,6 +51,9 @@ Stop-PortProcesses @(3000, 8080)
 
 Set-Location $repoRoot
 
+Remove-Item -Recurse -Force (Join-Path $repoRoot "packages\web\.next") -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force (Join-Path $repoRoot "packages\api\dist") -ErrorAction SilentlyContinue
+
 Write-Host "Building API and Web for a clean local runtime..." -ForegroundColor Cyan
 npm run build -w @amline/api
 if ($LASTEXITCODE -ne 0) { throw "API build failed." }

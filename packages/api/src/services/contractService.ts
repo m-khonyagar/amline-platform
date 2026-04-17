@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { readJsonState, writeJsonState } from '../utils/stateStore';
 
 export type ClientContext = 'people' | 'advisor' | 'ops';
 export type VisibilityScope = 'people_only' | 'shared' | 'advisor_managed' | 'team';
@@ -52,7 +53,12 @@ export type ContractAccessResult =
   | { kind: 'not_found' }
   | { kind: 'forbidden'; scenarioId: string; message: string };
 
-const contracts: ContractRecord[] = [
+type ContractState = {
+  version: 1;
+  contracts: ContractRecord[];
+};
+
+const defaultContracts: ContractRecord[] = [
   {
     id: 'ct-1001',
     title: 'قرارداد رهن و اجاره جدید',
@@ -211,6 +217,17 @@ const contracts: ContractRecord[] = [
     signedByUserIds: [],
   },
 ];
+
+const stateFile = 'amline-contract-store.json';
+const state = readJsonState<ContractState>(stateFile, {
+  version: 1,
+  contracts: defaultContracts,
+});
+const contracts = state.contracts;
+
+function persist(): void {
+  writeJsonState(stateFile, state);
+}
 
 function canViewContract(contract: ContractRecord, client: ClientContext, actorId: string, teamId?: string): boolean {
   if (client === 'ops') {
@@ -375,6 +392,7 @@ export const contractService = {
 
     contract.signedByUserIds.push(userId);
     contract.version += 1;
+    persist();
     logger.info('contract_signed', { contractId: id, userId, client, audit: 'contract_signed' });
     return { ok: true, message: 'قرارداد با موفقیت امضا شد. نسخه PDF برای شما ارسال شد.' };
   },
@@ -395,6 +413,7 @@ export const contractService = {
       };
     }
     contract.version += 1;
+    persist();
     return { ok: true, version: contract.version };
   },
 
@@ -413,6 +432,7 @@ export const contractService = {
     }
 
     contracts.splice(index, 1);
+    persist();
     return true;
   },
 };
