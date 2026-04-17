@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, ForeignKey
 from .database import Base
 import uuid
 from datetime import datetime
@@ -8,6 +8,7 @@ class Contract(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     status = Column(String, default='draft')
+    visibility = Column(String, default='people_only')
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class ContractDraft(Base):
@@ -15,4 +16,25 @@ class ContractDraft(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     data = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ContractParty(Base):
+    __tablename__ = 'contract_parties'
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    contract_id = Column(String, ForeignKey('contracts.id'))
+    role = Column(String)
+    full_name = Column(String)
+    phone = Column(String)
+    signature_status = Column(String, default='pending')
+    signed_at = Column(DateTime, nullable=True)
+
+class ReviewQueue(Base):
+    __tablename__ = 'review_queue'
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    contract_id = Column(String, ForeignKey('contracts.id'))
+    review_type = Column(String, default='legal')
+    status = Column(String, default='pending')
+    notes = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
