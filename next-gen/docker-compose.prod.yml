@@ -15,6 +15,7 @@ services:
       - auth
       - contract
       - signature
+      - advisor-service
 
   people:
     build: ./apps/people
@@ -38,6 +39,10 @@ services:
 
   signature:
     build: ./services/signature
+    restart: always
+
+  advisor-service:
+    build: ./services/advisor
     restart: always
 
   postgres:
