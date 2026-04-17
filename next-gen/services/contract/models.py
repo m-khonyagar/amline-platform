@@ -9,6 +9,8 @@ class Contract(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     status = Column(String, default='draft')
     visibility = Column(String, default='people_only')
+    creator_phone = Column(String, nullable=True)
+    advisor_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class ContractDraft(Base):
@@ -37,4 +39,13 @@ class ReviewQueue(Base):
     review_type = Column(String, default='legal')
     status = Column(String, default='pending')
     notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class TrackingRequest(Base):
+    __tablename__ = 'tracking_requests'
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    contract_id = Column(String, ForeignKey('contracts.id'))
+    status = Column(String, default='requested')
+    tracking_code = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
