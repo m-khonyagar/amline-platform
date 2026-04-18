@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>راهنمای تست محلی — کاربر عادی</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+      }
+      body {
+        max-width: 52rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        font-size: 1.35rem;
+      }
+      .warn {
+        background: #fff8e6;
+        border: 1px solid #e6c200;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        font: inherit;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 1px solid #333;
+        background: #111;
+        color: #fff;
+      }
+      section {
+        margin: 1.75rem 0;
+      }
+      ul {
+        padding-right: 1.25rem;
+      }
+      a {
+        color: #0b57d0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>راهنمای تست محلی — نقش کاربر عادی (seller)</h1>
+    <p class="warn">
+      این فقط برای <strong>localhost</strong> است. نشست آزمایشی بدون توکن واقعی است؛ برای OTP واقعی API را روی پورت
+      ۸۰۸۰ اجرا کنید و از <a href="/auth/login">صفحه ورود</a> استفاده کنید.
+    </p>
+
+    <section>
+      <h2>۱) اعمال سریع نشست کاربر (بدون OTP)</h2>
+      <p>برای مرور سریع صفحات محافظت‌شده بدون فراخوانی API:</p>
+      <button type="button" id="apply">اعمال نشست آزمایشی و رفتن به پروفایل</button>
+    </section>
+
+    <section>
+      <h2>۲) صفحات پس از ورود (کاربر عادی)</h2>
+      <ul>
+        <li><a href="/account/profile">پروفایل</a></li>
+        <li><a href="/account/listings">آگهی‌ها</a></li>
+        <li><a href="/account/needs">نیازمندی‌ها</a></li>
+        <li><a href="/account/requests">درخواست‌ها</a></li>
+        <li><a href="/account/bookmarks">نشان‌شده‌ها</a></li>
+        <li><a href="/account/invoices">صورتحساب‌ها</a></li>
+        <li><a href="/account/payment-history">تاریخچه پرداخت</a></li>
+        <li><a href="/contracts">قراردادها</a></li>
+        <li><a href="/contracts/new">قرارداد جدید</a></li>
+        <li><a href="/contracts/ct-1001">جزئیات نمونه ct-1001</a></li>
+        <li><a href="/contracts/ct-1002">جزئیات نمونه ct-1002</a></li>
+        <li><a href="/chat">گفتگو</a></li>
+        <li><a href="/chat/listing-250">گفتگو listing-250</a></li>
+        <li><a href="/chat/need-250">گفتگو need-250</a></li>
+        <li><a href="/chat/support">پشتیبانی</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>۳) صفحات عمومی (بدون ورود)</h2>
+      <ul>
+        <li><a href="/">خانه</a></li>
+        <li><a href="/auth/login">ورود</a></li>
+        <li><a href="/auth/register">ثبت‌نام</a></li>
+        <li><a href="/auth/forgot-password">فراموشی رمز</a></li>
+        <li><a href="/legal">قوانین</a></li>
+        <li><a href="/support">پشتیبانی</a></li>
+        <li><a href="/careers">فرصت‌های شغلی</a></li>
+        <li><a href="/achievements">دستاوردها</a></li>
+      </ul>
+    </section>
+
+    <script>
+      (function () {
+        var allowed = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        var session = {
+          id: 'acct_1',
+          fullName: 'آراد صالحی',
+          mobile: '09121234567',
+          city: 'تهران',
+          role: 'seller',
+          membership: 'Amline Plus',
+          actorId: 'acct_1',
+          teamId: 'team_north',
+        };
+
+        document.getElementById('apply').addEventListener('click', function () {
+          if (!allowed) {
+            alert('فقط روی localhost قابل استفاده است.');
+            return;
+          }
+          localStorage.setItem('amline.session', JSON.stringify(session));
+          location.href = '/account/profile';
+        });
+      })();
+    </script>
+  </body>
+</html>
