@@ -308,6 +308,16 @@ export async function fetchAccountListings(): Promise<AccountCollectionItem[]> {
   return fetchCollection<AccountCollectionItem>('/account/listings');
 }
 
+export async function deleteAccountListing(id: string): Promise<void> {
+  const response = await fetch(`${api.baseUrl}/account/listings/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete listing.');
+  }
+}
+
 export async function fetchAccountNeeds(): Promise<AccountCollectionItem[]> {
   return fetchCollection<AccountCollectionItem>('/account/needs');
 }

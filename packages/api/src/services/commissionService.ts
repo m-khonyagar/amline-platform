@@ -36,38 +36,38 @@ export const commissionService = {
   ): { ok: true; message: string } | { ok: false; error: string } {
     const row = state.commissions.find((commission) => commission.id === id && commission.advisorId === advisorId);
     if (!row) {
-      return { ok: false, error: 'Ø±Ú©ÙˆØ±Ø¯ ÛŒØ§ÙØª Ù†Ø´Ø¯' };
+      return { ok: false, error: 'رکورد یافت نشد' };
     }
     if (row.amountRial <= 0 || row.status !== 'pending') {
-      return { ok: false, error: 'ØªØ³ÙˆÛŒÙ‡ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† Ø±Ú©ÙˆØ±Ø¯ Ù…Ø¬Ø§Ø² Ù†ÛŒØ³Øª' };
+      return { ok: false, error: 'تسویه برای این رکورد مجاز نیست' };
     }
     row.status = 'requested';
     persist();
-    recordAudit('commission', id, 'settlement_requested', `Ø¯Ø±Ø®ÙˆØ§Ø³Øª ØªØ³ÙˆÛŒÙ‡ Ø¨Ù‡ Ù…Ø¨Ù„Øº ${row.amountRial} Ø±ÛŒØ§Ù„`, 'ops.system', 'system');
+    recordAudit('commission', id, 'settlement_requested', `درخواست تسویه به مبلغ ${row.amountRial} ریال`, 'ops.system', 'system');
     return {
       ok: true,
-      message: `Ø¯Ø±Ø®ÙˆØ§Ø³Øª ØªØ³ÙˆÛŒÙ‡ Ø¨Ù‡ Ù…Ø¨Ù„Øº ${row.amountRial.toLocaleString('fa-IR')} Ø±ÛŒØ§Ù„ Ø«Ø¨Øª Ø´Ø¯. Ú©Ø§Ø±Ø´Ù†Ø§Ø³Ø§Ù† Ø¨Ø±Ø±Ø³ÛŒ Ù…ÛŒâ€ŒÚ©Ù†Ù†Ø¯.`,
+      message: `درخواست تسویه به مبلغ ${row.amountRial.toLocaleString('fa-IR')} ریال ثبت شد. کارشناسان بررسی می‌کنند.`,
     };
   },
 
   approve(id: string): { ok: true } | { ok: false; error: string } {
     const row = state.commissions.find((commission) => commission.id === id);
     if (!row) {
-      return { ok: false, error: 'Ø±Ú©ÙˆØ±Ø¯ ÛŒØ§ÙØª Ù†Ø´Ø¯' };
+      return { ok: false, error: 'رکورد یافت نشد' };
     }
     row.status = 'paid';
     persist();
-    recordAudit('commission', id, 'settlement_approved', 'ØªØ³ÙˆÛŒÙ‡ ØªØ£ÛŒÛŒØ¯ Ø´Ø¯', 'ops.finance', 'ops');
+    recordAudit('commission', id, 'settlement_approved', 'تسویه تایید شد', 'ops.finance', 'ops');
     return { ok: true };
   },
 
   reject(id: string, reason: string): { ok: true } | { ok: false; error: string } {
     const row = state.commissions.find((commission) => commission.id === id);
     if (!row) {
-      return { ok: false, error: 'Ø±Ú©ÙˆØ±Ø¯ ÛŒØ§ÙØª Ù†Ø´Ø¯' };
+      return { ok: false, error: 'رکورد یافت نشد' };
     }
     if (!reason.trim()) {
-      return { ok: false, error: 'Ø¯Ù„ÛŒÙ„ Ø±Ø¯ Ø§Ø¬Ø¨Ø§Ø±ÛŒ Ø§Ø³Øª' };
+      return { ok: false, error: 'دلیل رد اجباری است' };
     }
     row.status = 'rejected';
     row.rejectReason = reason.trim();

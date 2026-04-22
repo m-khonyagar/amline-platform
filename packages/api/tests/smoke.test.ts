@@ -149,6 +149,79 @@ test('chat messages endpoint persists new messages', async () => {
   }
 });
 
+test('chat endpoint creates missing conversation on demand', async () => {
+  const server = startServer(0);
+  const address = server.address();
+
+  if (!address || typeof address === 'string') {
+    server.close();
+    throw new Error('Failed to resolve test server address.');
+  }
+
+  try {
+    const createResponse = await fetch(`http://127.0.0.1:${address.port}/api/chat/conversations/listing-1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: 'پیام برای آگهی جدید',
+      }),
+    });
+
+    assert.equal(createResponse.status, 201);
+
+    const listResponse = await fetch(`http://127.0.0.1:${address.port}/api/chat/conversations`);
+    assert.equal(listResponse.status, 200);
+    const payload = (await listResponse.json()) as { items: Array<{ id: string }> };
+    assert.equal(payload.items.some((item) => item.id === 'listing-1'), true);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+});
+
+test('account listings endpoint supports delete', async () => {
+  const server = startServer(0);
+  const address = server.address();
+
+  if (!address || typeof address === 'string') {
+    server.close();
+    throw new Error('Failed to resolve test server address.');
+  }
+
+  try {
+    const deleteResponse = await fetch(`http://127.0.0.1:${address.port}/api/account/listings/listing-2`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteResponse.status, 200);
+
+    const listResponse = await fetch(`http://127.0.0.1:${address.port}/api/account/listings`);
+    assert.equal(listResponse.status, 200);
+    const payload = (await listResponse.json()) as { items: Array<{ id: string }> };
+    assert.equal(payload.items.some((item) => item.id === 'listing-2'), false);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+});
+
 test('advisor contract list hides people-only contracts', async () => {
   const server = startServer(0);
   const address = server.address();

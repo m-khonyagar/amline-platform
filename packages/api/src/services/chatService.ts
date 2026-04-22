@@ -79,6 +79,49 @@ const messages: Record<string, ChatMessage[]> = {
   ],
 };
 
+function buildConversationTitle(id: string): string {
+  if (id.startsWith('listing-')) {
+    return `گفت‌وگو درباره آگهی ${id.replace('listing-', '')}`;
+  }
+
+  if (id.startsWith('need-')) {
+    return `گفت‌وگو درباره نیازمندی ${id.replace('need-', '')}`;
+  }
+
+  return 'گفت‌وگوی پلتفرم';
+}
+
+function buildConversationKind(id: string): ConversationRecord['kind'] {
+  if (id.startsWith('need-')) {
+    return 'need';
+  }
+
+  if (id === 'support') {
+    return 'support';
+  }
+
+  return 'listing';
+}
+
+function ensureConversation(id: string): ConversationRecord {
+  let conversation = conversations.find((item) => item.id === id);
+  if (conversation) {
+    return conversation;
+  }
+
+  conversation = {
+    id,
+    title: buildConversationTitle(id),
+    subtitle: id === 'support' ? 'املاین' : 'گفت‌وگوی تازه',
+    preview: 'هنوز پیامی ثبت نشده است.',
+    timeLabel: 'الان',
+    kind: buildConversationKind(id),
+  };
+  conversations.unshift(conversation);
+  messages[id] = messages[id] ?? [];
+  return conversation;
+}
+
 type ChatStore = {
   version: 1;
   messages: Record<string, ChatMessage[]>;
@@ -159,9 +202,11 @@ export const chatService = {
     return conversations;
   },
   messages(id: string): ChatMessage[] {
-    return messages[id] ?? messages.support;
+    ensureConversation(id);
+    return messages[id] ?? [];
   },
   appendMessage(id: string, text: string): ChatMessage {
+    const conversation = ensureConversation(id);
     const collection = messages[id] ?? (messages[id] = []);
     const nextMessage: ChatMessage = {
       id: String(collection.length + 1),
@@ -172,12 +217,8 @@ export const chatService = {
     };
 
     collection.push(nextMessage);
-
-    const conversation = conversations.find((item) => item.id === id);
-    if (conversation) {
-      conversation.preview = text;
-      conversation.timeLabel = 'الان';
-    }
+    conversation.preview = text;
+    conversation.timeLabel = 'الان';
 
     persist();
     return nextMessage;

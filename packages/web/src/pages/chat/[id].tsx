@@ -11,10 +11,37 @@ const conversationMap: Record<string, { title: string; subtitle: string; listing
   support: { title: 'کارشناس شماره ۱۰۵۵', subtitle: 'علیرضا احمدی', listingAge: 'پشتیبانی' },
 };
 
+function fallbackConversationMeta(id: string) {
+  if (id.startsWith('listing-')) {
+    return {
+      title: `گفت‌وگو درباره آگهی ${id.replace('listing-', '')}`,
+      subtitle: 'منتظر پاسخ کارشناس',
+      listingAge: 'آگهی',
+      image: true,
+    };
+  }
+
+  if (id.startsWith('need-')) {
+    return {
+      title: `گفت‌وگو درباره نیازمندی ${id.replace('need-', '')}`,
+      subtitle: 'منتظر پاسخ کارشناس',
+      listingAge: 'نیازمندی',
+      image: false,
+    };
+  }
+
+  return {
+    title: 'گفت‌وگوی پلتفرم',
+    subtitle: 'در حال پیگیری',
+    listingAge: 'گفت‌وگو',
+    image: false,
+  };
+}
+
 export default function ChatDetailPage() {
   const router = useRouter();
   const conversationId = typeof router.query.id === 'string' ? router.query.id : 'support';
-  const conversation = conversationMap[conversationId] ?? conversationMap.support;
+  const conversation = conversationMap[conversationId] ?? fallbackConversationMeta(conversationId);
   const messagesQuery = useAsyncData(() => fetchConversationMessages(conversationId), [conversationId]);
   const [message, setMessage] = useState('');
   const [localMessages, setLocalMessages] = useState<ChatMessageSummary[]>([]);

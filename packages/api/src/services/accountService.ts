@@ -41,36 +41,36 @@ const state = readJsonState<AccountState>(stateFile, {
   version: 1,
   profile: {
     id: 'acct_1',
-    fullName: 'Ø¢Ø±Ø§Ø¯ ØµØ§Ù„Ø­ÛŒ',
+    fullName: 'آراد صالحی',
     role: 'seller',
     mobile: '09121234567',
-    city: 'ØªÙ‡Ø±Ø§Ù†',
+    city: 'تهران',
     membership: 'Amline Plus',
   },
   profileDetails: {
     completionPercent: 86,
     identityStatus: 'verified',
-    agencyName: 'Ø§Ù…Ù„Ø§Ú© Ø§Ù…Ù† ØªÙ‡Ø±Ø§Ù†',
+    agencyName: 'املاک امن تهران',
     supportPhone: '+982532048000',
-    supportHours: 'Ù‡Ø± Ø±ÙˆØ² Ø§Ø² Ø³Ø§Ø¹Øª Û¹ ØªØ§ Û²Û±',
+    supportHours: 'هر روز از ساعت ۹ تا ۲۱',
     whatsapp: 'https://wa.me/989127463726',
     preferences: [
-      { key: 'sms', label: 'Ø§Ø¹Ù„Ø§Ù† Ù¾ÛŒØ§Ù…Ú©ÛŒ Ù‚Ø±Ø§Ø±Ø¯Ø§Ø¯', enabled: true },
-      { key: 'push', label: 'Ø§Ø¹Ù„Ø§Ù† ÙÙˆØ±ÛŒ Ø§Ù¾Ù„ÛŒÚ©ÛŒØ´Ù†', enabled: true },
-      { key: 'email', label: 'Ú¯Ø²Ø§Ø±Ø´ Ù‡ÙØªÚ¯ÛŒ Ø§ÛŒÙ…ÛŒÙ„ÛŒ', enabled: false },
+      { key: 'sms', label: 'اعلان پیامکی قرارداد', enabled: true },
+      { key: 'push', label: 'اعلان فوری اپلیکیشن', enabled: true },
+      { key: 'email', label: 'گزارش هفتگی ایمیلی', enabled: false },
     ],
   },
   listings: [
-    { id: 'listing-1', title: 'Ø¢Ù¾Ø§Ø±ØªÙ…Ø§Ù† Ø®ÙˆØ´â€ŒÙ†Ù‚Ø´Ù‡ Û±Û¸Û° Ù…ØªØ±ÛŒ', city: 'Ù‚Ù…ØŒ Ù¾Ø±Ø¯ÛŒØ³Ø§Ù†', status: 'Ù…Ù†ØªØ´Ø± Ø´Ø¯Ù‡' },
-    { id: 'listing-2', title: 'ÙˆÛŒÙ„Ø§ Ø¨Ø§Øº Û´ÛµÛ° Ù…ØªØ±ÛŒ', city: 'Ø¯Ù…Ø§ÙˆÙ†Ø¯', status: 'Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± ØªØ§ÛŒÛŒØ¯' },
+    { id: 'listing-1', title: 'آپارتمان خوش‌نقشه ۱۸۰ متری', city: 'قم، پردیسان', status: 'منتشر شده' },
+    { id: 'listing-2', title: 'ویلا باغ ۴۵۰ متری', city: 'دماوند', status: 'در انتظار تایید' },
   ],
   bookmarks: [
-    { id: 'bookmark-1', title: 'Ø¢Ù¾Ø§Ø±ØªÙ…Ø§Ù† Ø®ÙˆØ´â€ŒÙ†Ù‚Ø´Ù‡ Û±Û¸Û° Ù…ØªØ±ÛŒ', city: 'Ù‚Ù…ØŒ Ù¾Ø±Ø¯ÛŒØ³Ø§Ù†' },
-    { id: 'bookmark-2', title: 'ÙˆÛŒÙ„Ø§ Ø¨Ø§Øº Û´ÛµÛ° Ù…ØªØ±ÛŒ', city: 'Ø¯Ù…Ø§ÙˆÙ†Ø¯' },
+    { id: 'bookmark-1', title: 'آپارتمان خوش‌نقشه ۱۸۰ متری', city: 'قم، پردیسان' },
+    { id: 'bookmark-2', title: 'ویلا باغ ۴۵۰ متری', city: 'دماوند' },
   ],
   requests: [
-    { id: 'req-1', title: 'Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ø¨Ø§Ø²Ø¯ÛŒØ¯ Ø¢Ù¾Ø§Ø±ØªÙ…Ø§Ù† Ø®ÙˆØ´â€ŒÙ†Ù‚Ø´Ù‡', status: 'Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ù¾Ø§Ø³Ø® Ú©Ø§Ø±Ø´Ù†Ø§Ø³' },
-    { id: 'req-2', title: 'Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ø§Ø³ØªØ¹Ù„Ø§Ù… Ù…Ø§Ù„Ú©ÛŒØª', status: 'Ø«Ø¨Øª Ø´Ø¯Ù‡ Ùˆ Ø¯Ø± ØµÙ Ø¨Ø±Ø±Ø³ÛŒ' },
+    { id: 'req-1', title: 'درخواست بازدید آپارتمان خوش‌نقشه', status: 'در انتظار پاسخ کارشناس' },
+    { id: 'req-2', title: 'درخواست استعلام مالکیت', status: 'ثبت شده و در صف بررسی' },
   ],
 });
 
@@ -110,6 +110,16 @@ export const accountService = {
   },
   listings(): AccountCollectionItem[] {
     return state.listings;
+  },
+  removeListing(id: string): { ok: true } | { ok: false; error: string } {
+    const index = state.listings.findIndex((item) => item.id === id);
+    if (index === -1) {
+      return { ok: false, error: 'آگهی یافت نشد' };
+    }
+
+    state.listings.splice(index, 1);
+    persist();
+    return { ok: true };
   },
   needs(): AccountCollectionItem[] {
     return needsService.list();

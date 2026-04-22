@@ -587,6 +587,17 @@ export async function requestListener(
       return;
     }
 
+    if (method === 'DELETE' && url.pathname.startsWith('/api/account/listings/')) {
+      const id = url.pathname.replace('/api/account/listings/', '');
+      const result = app.accountService.removeListing(id);
+      if (!result.ok) {
+        sendJson(response, 404, { error: result.error, requestId }, { 'X-Request-Id': requestId });
+        return;
+      }
+      sendJson(response, 200, { ok: true, requestId }, { 'X-Request-Id': requestId });
+      return;
+    }
+
     if (method === 'GET' && url.pathname === '/api/account/needs') {
       sendJson(response, 200, { items: app.accountService.needs() }, { 'X-Request-Id': requestId });
       return;
